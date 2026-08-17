@@ -1,0 +1,48 @@
+{
+  "name": "@forge/opencode",
+  "bin": "",
+  "type": "module",
+  "exports": {
+    "./config": {
+      "import": "./src/platform/config.ts",
+      "types": "./src/platform/config.ts"
+    },
+    "./config/install": {
+      "import": "./src/platform/install.ts",
+      "types": "./src/platform/install.ts"
+    },
+    "./config/migrate": {
+      "import": "./src/platform/migrate.ts",
+      "types": "./src/platform/migrate.ts"
+    },
+    "./server": {
+      "import": "./src/plugin/server/index.ts",
+      "types": "./src/plugin/server/index.ts"
+    },
+    "./tui": {
+      "import": "./src/plugin/tui/index.ts",
+      "types": "./src/plugin/tui/index.ts"
+    }
+  },
+  "scripts": {
+    "test": "bun test test"
+  },
+  "dependencies": {
+    "@forge/core": "workspace:*",
+    "confbox": "^0.2.4",
+    "defu": "^6.1.7",
+    "microdiff": "^1.6.0",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/bun": "catalog:"
+  },
+  "peerDependencies": {
+    "@opencode-ai/plugin": ">=1.18.18 <2.0.0",
+    "@opentui/core": ">=0.4.5",
+    "@opentui/keymap": ">=0.4.5",
+    "@opentui/solid": ">=0.4.5",
+    "solid-js": "1.9.12",
+    "typescript": "catalog:"
+  }
+}
