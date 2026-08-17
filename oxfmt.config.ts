@@ -1,5 +1,6 @@
 import { defineConfig } from "oxfmt";
-import { AgentConfigLocations } from "./oxlint.config";
+
+import { AgentConfigLocations } from "./oxlint.config.ts";
 
 export default defineConfig({
   ignorePatterns: AgentConfigLocations,

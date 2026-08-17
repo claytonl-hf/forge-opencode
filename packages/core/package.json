@@ -1,0 +1,35 @@
+{
+  "name": "@forge/core",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./src/index.ts",
+      "types": "./src/index.ts"
+    },
+    "./utils": {
+      "import": "./src/lib/utils.ts",
+      "types": "./src/lib/utils.ts"
+    }
+  },
+  "scripts": {
+    "debug": "bun run scripts/debug.ts",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@opencode-ai/models": "^0.0.40",
+    "env-paths": "^4.0.0",
+    "globlin": "^1.0.0-beta.1",
+    "gray-matter": "^4.0.3",
+    "semver": "^7.8.5",
+    "unstorage": "^1.17.5",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/client": "2.0.0",
+    "@types/bun": "catalog:",
+    "@types/semver": "^7.8.0"
+  },
+  "peerDependencies": {
+    "typescript": "catalog:"
+  }
+}
