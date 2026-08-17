@@ -1,6 +1,10 @@
 {
   "name": "forge",
   "private": true,
+  "description": "Humanforce Forge integration for AI agent harnesses.",
+  "bin": {
+    "forge": "console/bin.js"
+  },
   "workspaces": {
     "packages": [
       "packages/*"
@@ -13,17 +17,27 @@
   },
   "type": "module",
   "scripts": {
-    "prepare": "lefthook install",
-    "test": "bun run --filter '*' test",
+    "forge": "tsx console/bin.js",
+    "prepare": "lefthook install && skills-npm --agents universal --yes",
+    "test": "bun test console/app.test.ts && bun run --filter '*' test",
     "format": "oxfmt --config oxfmt.config.ts",
     "lint": "oxlint"
+  },
+  "dependencies": {
+    "@forge/core": "workspace:*",
+    "@forge/opencode": "workspace:*",
+    "@optique/core": "^1.2.1",
+    "@optique/discover": "^1.2.1",
+    "execa": "^10.0.1",
+    "tsx": "^4.23.12"
   },
   "devDependencies": {
     "@oxlint/plugins": "1.78.0",
     "@types/bun": "catalog:",
     "lefthook": "^2.1.10",
     "oxfmt": "^0.63.0",
-    "oxlint": "1.78.0"
+    "oxlint": "1.78.0",
+    "skills-npm": "^1.2.0"
   },
   "peerDependencies": {
     "typescript": "catalog:"
