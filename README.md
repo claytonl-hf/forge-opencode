@@ -42,6 +42,13 @@ pass the `--mcp` flag.
 BUN_BE_BUN=1 opencode forge install --mcp
 ```
 
+To install the additional `@plannotator/opencode` plugin,
+pass the `--plugins` flag.
+
+```sh
+BUN_BE_BUN=1 opencode forge install --plugins
+```
+
 To install [preset profiles](docs/features.md#preset-profiles),
 pass the `--profiles` flag.
 

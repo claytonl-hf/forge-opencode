@@ -10,14 +10,17 @@ export default defineCommand({
     brief: message`Install Forge for OpenCode.`,
   },
   parser: object({
-    profiles: option("-p", "--profiles", {
+    profiles: option("--profiles", {
       description: message`Install the preset Forge profiles.`,
     }),
-    mcp: option("-m", "--mcp", {
+    plugins: option("--plugins", {
+      description: message`Install additional plugins.`,
+    }),
+    mcp: option("--mcp", {
       description: message`Install additional MCP servers.`,
     }),
   }),
-  async handler({ profiles, mcp }) {
+  async handler(options) {
     await OpenCode.version().then(async (v) => {
       if (!v || v.satisfies(`<${OpenCode.MinimumVersion}`)) {
         console.error("OpenCode 1.18 or higher is required to install Forge.");
@@ -34,7 +37,7 @@ export default defineCommand({
     console.groupEnd();
 
     console.group("Installing Forge OpenCode plugin.");
-    await OpenCode.install({ profiles, mcp }).then(async (results) => {
+    await OpenCode.install(options).then(async (results) => {
       for (const result of results) {
         console.log(`→ ${result.path}`);
       }
