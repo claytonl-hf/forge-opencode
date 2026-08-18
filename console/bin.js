@@ -3,4 +3,4 @@
 import { register } from "tsx/esm/api";
 
 register();
-await import("./app.ts");
+await import("./app.ts").then((module) => module.run());
