@@ -8,6 +8,7 @@ export function createHooks(input: Hooks[]): Hooks {
   const systemTransforms = input.flatMap(({ "experimental.chat.system.transform": transform }) =>
     transform ? [transform] : [],
   );
+  const chatMessages = input.flatMap(({ "chat.message": message }) => (message ? [message] : []));
   const tools = Object.assign({}, ...input.flatMap(({ tool }) => (tool ? [tool] : [])));
 
   if (configs.length > 0) {
@@ -28,6 +29,11 @@ export function createHooks(input: Hooks[]): Hooks {
   if (systemTransforms.length > 0) {
     output["experimental.chat.system.transform"] = async (input, output) => {
       for (const hook of systemTransforms) await hook(input, output);
+    };
+  }
+  if (chatMessages.length > 0) {
+    output["chat.message"] = async (input, output) => {
+      for (const hook of chatMessages) await hook(input, output);
     };
   }
   if (Object.keys(tools).length > 0) output.tool = tools;

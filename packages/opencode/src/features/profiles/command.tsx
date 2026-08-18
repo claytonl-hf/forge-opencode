@@ -15,7 +15,7 @@ import {
   resolveProfileSelection,
   serializeProfileSelection,
 } from "./picker";
-import { setProfileModel } from "./profile";
+import { modelForSession, PROFILE_METADATA_KEY, setProfileModel } from "./profile";
 
 export function ProfileCommand(
   api: TuiPluginApi,
@@ -53,15 +53,55 @@ export function ProfileCommand(
           return next;
         });
         close();
+        const title =
+          selected && selected !== DesktopProfile
+            ? `Forge profile set to ${profileTitle(profiles[selected], selected)}`
+            : selected === DesktopProfile
+              ? "Forge Desktop models selected"
+              : "Forge profile cleared";
+        const route = api.route.current;
+        if (route.name !== "session") {
+          api.ui.toast({
+            variant: "success",
+            title,
+            message: "Restart OpenCode to apply the changes.",
+            duration: 2500,
+          });
+          return;
+        }
+
+        // SAFETY: the TUI host's named session route always carries a string sessionID.
+        const sessionID = (route as { params: { sessionID: string } }).params.sessionID;
+        const session = api.state.session.get(sessionID);
+        const profileName =
+          selected && selected !== DesktopProfile ? serializeProfileSelection(selected) : undefined;
+        const metadata = { ...session?.metadata };
+        if (profileName) metadata[PROFILE_METADATA_KEY] = profileName;
+        else delete metadata[PROFILE_METADATA_KEY];
+        await api.client.session.update({ sessionID, metadata });
+
+        const model = modelForSession(
+          profileName ? profiles[profileName] : undefined,
+          session?.agent,
+        );
+        if (model) {
+          try {
+            await api.client.v2.session.switchModel({ sessionID, model }, { throwOnError: true });
+          } catch {
+            api.ui.toast({
+              variant: "error",
+              title: "Forge profile saved",
+              message: "The profile was saved, but the current session model could not be updated.",
+              duration: 4000,
+            });
+            return;
+          }
+        }
+
         api.ui.toast({
           variant: "success",
-          title:
-            selected && selected !== DesktopProfile
-              ? `Forge profile set to ${profileTitle(profiles[selected], selected)}`
-              : selected === DesktopProfile
-                ? "Forge Desktop models selected"
-                : "Forge profile cleared",
-          message: "Restart OpenCode to apply the changes.",
+          title,
+          message: "Current session updated. Restart OpenCode to apply the config elsewhere.",
           duration: 2500,
         });
       };
