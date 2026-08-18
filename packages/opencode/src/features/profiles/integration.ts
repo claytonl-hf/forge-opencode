@@ -1,7 +1,6 @@
-import { createOpencodeClient } from "@opencode-ai/sdk/v2";
-
 import type { Integration } from "../../plugin/integrations/types";
 
+import { onTuiSessionCreated } from "./pending";
 import { createProfileSessionHooks, type ProfileSessionClient } from "./session";
 
 export const ProfileIntegration: Integration = async (forge, forgeOptions) => {
@@ -9,20 +8,10 @@ export const ProfileIntegration: Integration = async (forge, forgeOptions) => {
   const provider = await forge.provider();
 
   return {
-    server: async ({ client, directory, serverUrl }) => {
-      const v2 = createOpencodeClient({ baseUrl: serverUrl.origin, directory });
+    server: async ({ client, directory }) => {
       const profileClient: ProfileSessionClient = {
         session: {
           get: ({ path, query }) => client.session.get({ path, query }),
-          update: async ({ path, query, body }) => {
-            // SAFETY: the v1 client accepts metadata at runtime; its generated types omit it.
-            await client.session.update({ path, query, body } as Parameters<
-              typeof client.session.update
-            >[0]);
-          },
-          switchModel: async ({ sessionID, model }) => {
-            await v2.v2.session.switchModel({ sessionID, model }, { throwOnError: true });
-          },
         },
       };
 
@@ -67,6 +56,20 @@ export const ProfileIntegration: Integration = async (forge, forgeOptions) => {
     },
     tui: async (api) => {
       const { ProfileCommand } = await import("./command");
+      api.event.on("session.created", (event) => {
+        const info = event.properties.info;
+        void onTuiSessionCreated({
+          sessionID: info.id,
+          parentID: info.parentID,
+          agent: info.agent,
+          metadata: info.metadata,
+          profiles: forgeOptions.value.profiles ?? {},
+          getParent: async (id) => api.state.session.get(id),
+          update: (sessionID, metadata) => api.client.session.update({ sessionID, metadata }),
+          switchModel: (sessionID, model) =>
+            api.client.v2.session.switchModel({ sessionID, model }, { throwOnError: true }),
+        });
+      });
 
       return {
         commands: [ProfileCommand(api, forgeOptions)],

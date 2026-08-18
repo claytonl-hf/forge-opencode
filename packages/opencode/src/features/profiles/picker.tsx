@@ -9,6 +9,10 @@ import type { Profile } from "./profile";
 
 export const DesktopProfile = Symbol("forge-desktop-profile");
 export type ProfileSelection = string | typeof DesktopProfile | null;
+export enum ProfileScope {
+  Session = "session",
+  Global = "global",
+}
 const DesktopProfileConfig = "default";
 
 type SelectOption<Value> = {
@@ -31,6 +35,8 @@ function ProfileSelect<Value>(props: {
   onEdit: (value: Value) => void;
   onClose: () => void;
   onKey: (event: KeyEvent, actions: SelectActions) => boolean;
+  scope?: () => ProfileScope;
+  onScopeChange?: (scope: ProfileScope) => void;
   footer: (actions: { select: () => void; edit: () => void }) => JSX.Element;
 }) {
   const [query, setQuery] = createSignal("");
@@ -43,7 +49,6 @@ function ProfileSelect<Value>(props: {
   const [currentValue, setCurrentValue] = createSignal(props.current);
   createEffect(() => setCurrentValue(() => props.current));
   let scroll: ScrollBoxRenderable | undefined;
-  let lastClick: { value: Value; time: number } | undefined;
 
   function move(index: number) {
     const options = filtered();
@@ -69,12 +74,7 @@ function ProfileSelect<Value>(props: {
 
   function click(option: SelectOption<Value>, index: number) {
     move(index);
-    const now = performance.now();
-    const double =
-      lastClick && Object.is(lastClick.value, option.value) && now - lastClick.time < 350;
-    lastClick = { value: option.value, time: now };
     select(option.value);
-    if (double && option.editable !== false) props.onEdit(option.value);
   }
 
   function select(value: Value) {
@@ -109,7 +109,9 @@ function ProfileSelect<Value>(props: {
     if (!onNavigationKey(context.event) && !props.onKey(context.event, actions)) return;
     context.consume();
   });
-  onCleanup(disposeKeys);
+  onCleanup(() => {
+    disposeKeys();
+  });
 
   return (
     <box gap={1} paddingBottom={1} flexGrow={1}>
@@ -203,6 +205,37 @@ function ProfileSelect<Value>(props: {
           }}
         </For>
       </scrollbox>
+      <Show when={props.scope && props.onScopeChange}>
+        <box paddingX={4} paddingBottom={1} flexDirection="column">
+          <box flexDirection="row">
+            <text fg={props.api.theme.current.text}>Apply profile to: </text>
+            <box flexDirection="row" backgroundColor={props.api.theme.current.backgroundElement}>
+              <For each={Object.values(ProfileScope)}>
+                {(scope) => (
+                  <box
+                    paddingX={1}
+                    backgroundColor={
+                      props.scope?.() === scope ? props.api.theme.current.primary : undefined
+                    }
+                    onMouseUp={() => props.onScopeChange?.(scope)}
+                  >
+                    <text
+                      fg={
+                        props.scope?.() === scope
+                          ? props.api.theme.current.selectedListItemText
+                          : undefined
+                      }
+                      attributes={props.scope?.() === scope ? TextAttributes.BOLD : undefined}
+                    >
+                      {scope.charAt(0).toUpperCase() + scope.slice(1)}
+                    </text>
+                  </box>
+                )}
+              </For>
+            </box>
+          </box>
+        </box>
+      </Show>
       {props.footer(actions)}
     </box>
   );
@@ -313,6 +346,8 @@ export function ProfilePicker({
   current: ProfileSelection;
   onSelect: (selection: ProfileSelection) => void;
   onEdit: (selection: ProfileSelection) => void;
+  scope?: () => ProfileScope;
+  onScopeChange?: (scope: ProfileScope) => void;
   onConfirm: () => void;
   onClose: () => void;
 }) {
@@ -338,6 +373,12 @@ export function ProfilePicker({
         before: index === 0 ? <box height={1} /> : undefined,
       })),
   ];
+  const toggleScope = () => {
+    if (!props.scope || !props.onScopeChange) return;
+    props.onScopeChange(
+      props.scope() === ProfileScope.Session ? ProfileScope.Global : ProfileScope.Session,
+    );
+  };
 
   return (
     <ProfileSelect
@@ -345,29 +386,43 @@ export function ProfilePicker({
       title="Select model profile"
       options={options}
       current={current}
+      scope={props.scope}
+      onScopeChange={props.onScopeChange}
       onSelect={props.onSelect}
       onEdit={props.onEdit}
       onClose={props.onClose}
       onKey={(event, actions) => {
-        if (event.name === "space") actions.select();
-        else if (event.name === "tab") actions.edit();
-        else if (isEnter(event)) props.onConfirm();
-        else if (event.name === "escape") props.onClose();
+        if (event.name === "space") actions.edit();
+        else if (event.name === "tab") {
+          if (!props.scope || !props.onScopeChange) return false;
+          toggleScope();
+        } else if (isEnter(event)) {
+          actions.select();
+          props.onConfirm();
+        } else if (event.name === "escape") props.onClose();
         else return false;
         return true;
       }}
       footer={(actions) => (
         <box flexDirection="row" justifyContent="space-between" paddingLeft={4} paddingRight={4}>
           <box flexDirection="row" gap={2}>
-            <text fg={api.theme.current.text} onMouseUp={actions.select}>
-              Select <span style={{ fg: api.theme.current.textMuted }}>space</span>
-            </text>
             <text fg={api.theme.current.text} onMouseUp={actions.edit}>
-              Edit <span style={{ fg: api.theme.current.textMuted }}>tab</span>
+              Edit <span style={{ fg: api.theme.current.textMuted }}>space</span>
             </text>
+            <Show when={props.scope && props.onScopeChange}>
+              <text fg={api.theme.current.text} onMouseUp={toggleScope}>
+                Scope <span style={{ fg: api.theme.current.textMuted }}>tab</span>
+              </text>
+            </Show>
           </box>
-          <text fg={api.theme.current.text} onMouseUp={props.onConfirm}>
-            Confirm <span style={{ fg: api.theme.current.textMuted }}>enter</span>
+          <text
+            fg={api.theme.current.text}
+            onMouseUp={() => {
+              actions.select();
+              props.onConfirm();
+            }}
+          >
+            Save <span style={{ fg: api.theme.current.textMuted }}>enter</span>
           </text>
         </box>
       )}
@@ -426,9 +481,6 @@ export function ProfileEditor({
       footer={(actions) => (
         <box flexDirection="row" justifyContent="space-between" paddingLeft={4} paddingRight={4}>
           <box flexDirection="row" gap={2}>
-            <text fg={api.theme.current.text} onMouseUp={props.onClose}>
-              Back <span style={{ fg: api.theme.current.textMuted }}>esc</span>
-            </text>
             <text fg={api.theme.current.text} onMouseUp={actions.edit}>
               Edit <span style={{ fg: api.theme.current.textMuted }}>space</span>
             </text>
