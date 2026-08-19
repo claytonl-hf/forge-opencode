@@ -38,7 +38,7 @@ describe("ForgeOptions", () => {
       tui: {
         theme: true,
         notify: false,
-        components: { logo: false, usage: true, web: true, workers: true },
+        components: { logo: false, usage: true, web: true, profile: true, workers: true },
       },
     });
   });
@@ -61,7 +61,7 @@ describe("useForgeOptions", () => {
       tui: {
         theme: false,
         notify: true,
-        components: { logo: false, usage: true, web: true, workers: true },
+        components: { logo: false, usage: true, web: true, profile: true, workers: true },
       },
     });
 

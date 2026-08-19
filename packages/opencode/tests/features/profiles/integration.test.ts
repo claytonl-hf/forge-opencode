@@ -7,6 +7,42 @@ import { ProfileIntegration } from "../../../src/features/profiles/integration";
 import { ForgeOptions, type UseForgeOptions } from "../../../src/plugin/options";
 
 describe("profile integration", () => {
+  test("keeps the profile command and contributes both prompt slots", async () => {
+    const options = { value: ForgeOptions.parse({}) };
+    const integration = await ProfileIntegration(
+      // SAFETY: this focused TUI fake provides only the provider used during setup.
+      { provider: async () => undefined } as never,
+      // SAFETY: this focused options fake provides the parsed value used during setup.
+      options as never,
+    );
+    // SAFETY: this focused TUI fake provides only the event and session state used during setup.
+    const contribution = await integration.tui!({
+      event: { on: () => () => {} },
+      state: { session: { get: () => undefined } },
+    } as never);
+
+    expect(contribution.commands?.map(({ name }) => name)).toEqual(["forge:profile"]);
+    expect(contribution.slots?.session_prompt_right).toBeFunction();
+    expect(contribution.slots?.home_prompt_right).toBeFunction();
+  });
+
+  test("keeps the profile command but omits the slot when disabled", async () => {
+    const options = {
+      value: ForgeOptions.parse({ tui: { components: { profile: false } } }),
+    };
+    const integration = await ProfileIntegration(
+      // SAFETY: this focused TUI fake provides only the provider used during setup.
+      { provider: async () => undefined } as never,
+      // SAFETY: this focused options fake provides the parsed value used during setup.
+      options as never,
+    );
+    // SAFETY: this focused TUI fake provides only the event used during setup.
+    const contribution = await integration.tui!({ event: { on: () => () => {} } } as never);
+
+    expect(contribution.commands?.map(({ name }) => name)).toEqual(["forge:profile"]);
+    expect(contribution.slots).toEqual({});
+  });
+
   test("intentionally overrides configured model and variant while preserving other agent fields", async () => {
     // SAFETY: this focused Forge fake provides the only method ProfileIntegration uses.
     const forge = {

@@ -5,7 +5,7 @@ import type { JSX } from "@opentui/solid";
 import { RGBA, type ScrollBoxRenderable, TextAttributes } from "@opentui/core";
 import { createEffect, createMemo, createSignal, For, onCleanup, Show } from "solid-js";
 
-import type { Profile } from "./profile";
+import { resolveProfileName, type Profile, type ProfileSessionMetadata } from "./profile";
 
 export const DesktopProfile = Symbol("forge-desktop-profile");
 export type ProfileSelection = string | typeof DesktopProfile | null;
@@ -496,6 +496,18 @@ export function ProfileEditor({
 
 export function profileTitle(profile: Profile | undefined, fallback: string) {
   return profile?.name ?? fallback;
+}
+
+export function visibleProfileTitle(
+  session: ProfileSessionMetadata | undefined,
+  parent: ProfileSessionMetadata | undefined,
+  globalProfile: string | undefined,
+  profiles: Record<string, Profile> | undefined,
+): string | undefined {
+  const key = resolveProfileName(session, parent, globalProfile, profiles);
+  const selection = resolveProfileSelection(key, profiles ?? {});
+  if (selection === null || selection === DesktopProfile) return undefined;
+  return profileTitle(profiles?.[selection], selection);
 }
 
 export function filterOptions<Value>(options: SelectOption<Value>[], query: string) {

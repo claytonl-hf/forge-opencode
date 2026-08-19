@@ -55,7 +55,11 @@ export const ProfileIntegration: Integration = async (forge, forgeOptions) => {
       };
     },
     tui: async (api) => {
-      const { ProfileCommand } = await import("./command");
+      const [{ ProfileCommand }, { ProfileSlots }, { isComponentEnabled }] = await Promise.all([
+        import("./command"),
+        import("./slot"),
+        import("../../plugin/tui/slots"),
+      ]);
       api.event.on("session.created", (event) => {
         const info = event.properties.info;
         void onTuiSessionCreated({
@@ -73,6 +77,7 @@ export const ProfileIntegration: Integration = async (forge, forgeOptions) => {
 
       return {
         commands: [ProfileCommand(api, forgeOptions)],
+        slots: isComponentEnabled(forgeOptions, "profile") ? ProfileSlots(api, forgeOptions) : {},
       };
     },
   };

@@ -11,6 +11,11 @@ const ForgeTuiComponents = z
     logo: z.boolean().optional().default(true).describe("Forge logo in home screen"),
     usage: z.boolean().optional().default(true).describe("Forge usage balance"),
     web: z.boolean().optional().default(true).describe("Open in Forge action"),
+    profile: z
+      .boolean()
+      .optional()
+      .default(true)
+      .describe("Current Forge profile name on the session prompt"),
     workers: z.boolean().optional().describe("Workers in the session sidebar"),
   })
   .transform(({ workers, ...components }) => ({

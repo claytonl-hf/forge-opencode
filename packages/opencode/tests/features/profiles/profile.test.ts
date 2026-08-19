@@ -20,6 +20,7 @@ import {
   filterOptions,
   resolveProfileSelection,
   serializeProfileSelection,
+  visibleProfileTitle,
 } from "../../../src/features/profiles/picker";
 import {
   modelForSession,
@@ -100,11 +101,15 @@ describe("setProfileModel", () => {
 describe("profile session helpers", () => {
   const profiles = {
     balanced: Profile.parse({
+      name: "Balanced",
       models: {
         $default: { id: "default", variant: "medium" },
         reviewer: { id: "reviewer", variant: "high" },
       },
     }),
+    parent: Profile.parse({ name: "Parent", models: {} }),
+    global: Profile.parse({ models: {} }),
+    default: Profile.parse({ name: "Hidden default", models: {} }),
   };
 
   test("resolves session metadata before parent metadata and global options", () => {
@@ -129,6 +134,32 @@ describe("profile session helpers", () => {
   test("ignores unknown and missing profiles without throwing", () => {
     expect(() => resolveProfileName(undefined, undefined, "missing", undefined)).not.toThrow();
     expect(resolveProfileName(undefined, undefined, "missing", profiles)).toBeUndefined();
+  });
+
+  test("resolves visible titles from session, parent, and global profiles", () => {
+    expect(
+      visibleProfileTitle(
+        { metadata: { [PROFILE_METADATA_KEY]: "balanced" } },
+        { metadata: { [PROFILE_METADATA_KEY]: "parent" } },
+        "global",
+        profiles,
+      ),
+    ).toBe("Balanced");
+    expect(
+      visibleProfileTitle(
+        undefined,
+        { metadata: { [PROFILE_METADATA_KEY]: "parent" } },
+        "global",
+        profiles,
+      ),
+    ).toBe("Parent");
+    expect(visibleProfileTitle(undefined, undefined, "global", profiles)).toBe("global");
+  });
+
+  test("hides missing, unknown, and Desktop Default selections", () => {
+    expect(visibleProfileTitle(undefined, undefined, undefined, profiles)).toBeUndefined();
+    expect(visibleProfileTitle(undefined, undefined, "missing", profiles)).toBeUndefined();
+    expect(visibleProfileTitle(undefined, undefined, "default", profiles)).toBeUndefined();
   });
 
   test("prefers an agent mapping and falls back to the default mapping", () => {

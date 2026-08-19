@@ -20,6 +20,7 @@ describe("Forge TUI worker options", () => {
       logo: true,
       usage: true,
       web: true,
+      profile: true,
       workers: false,
     });
   });
