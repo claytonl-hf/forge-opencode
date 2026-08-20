@@ -13,6 +13,8 @@ import {
   clearPendingProfile,
   onTuiSessionCreated,
   peekPendingProfile,
+  subscribePendingProfile,
+  takePendingProfile,
   writePendingProfile,
 } from "../../../src/features/profiles/pending";
 import {
@@ -20,6 +22,7 @@ import {
   filterOptions,
   resolveProfileSelection,
   serializeProfileSelection,
+  visibleHomeProfileTitle,
   visibleProfileTitle,
 } from "../../../src/features/profiles/picker";
 import {
@@ -156,6 +159,12 @@ describe("profile session helpers", () => {
     expect(visibleProfileTitle(undefined, undefined, "global", profiles)).toBe("global");
   });
 
+  test("prefers a pending home profile title over the global profile", () => {
+    expect(visibleHomeProfileTitle("balanced", "global", profiles)).toBe("Balanced");
+    expect(visibleHomeProfileTitle(undefined, "global", profiles)).toBe("global");
+    expect(visibleHomeProfileTitle(null, "global", profiles)).toBe("global");
+  });
+
   test("hides missing, unknown, and Desktop Default selections", () => {
     expect(visibleProfileTitle(undefined, undefined, undefined, profiles)).toBeUndefined();
     expect(visibleProfileTitle(undefined, undefined, "missing", profiles)).toBeUndefined();
@@ -174,6 +183,30 @@ describe("profile session helpers", () => {
       variant: "medium",
     });
     expect(modelForSession(Profile.parse({ models: {} }), "reviewer")).toBeUndefined();
+  });
+});
+
+describe("pending profile subscriptions", () => {
+  test("notifies subscribers when pending state changes and stops after unsubscribe", () => {
+    clearPendingProfile();
+    const values: Array<string | null | undefined> = [];
+    const unsubscribe = subscribePendingProfile((value) => values.push(value));
+
+    try {
+      writePendingProfile("balanced");
+      clearPendingProfile();
+      writePendingProfile("pending");
+      expect(takePendingProfile()).toBe("pending");
+
+      expect(values).toEqual(["balanced", undefined, "pending", undefined]);
+
+      unsubscribe();
+      writePendingProfile("ignored");
+      expect(values).toEqual(["balanced", undefined, "pending", undefined]);
+    } finally {
+      unsubscribe();
+      clearPendingProfile();
+    }
   });
 });
 

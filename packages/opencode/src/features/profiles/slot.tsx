@@ -7,7 +7,8 @@ import { Show, createSignal, onCleanup, onMount } from "solid-js";
 import type { TuiSlots } from "../../plugin/integrations/types";
 import type { UseForgeOptions } from "../../plugin/options";
 
-import { visibleProfileTitle } from "./picker";
+import { peekPendingProfile, subscribePendingProfile } from "./pending";
+import { visibleHomeProfileTitle, visibleProfileTitle } from "./picker";
 
 type Props = TuiSlotContext & {
   api: TuiPluginApi;
@@ -32,15 +33,11 @@ function ProfileSlot({ api, options, theme, sessionID }: Props) {
   const [parent, setParent] = createSignal(
     initialSession?.parentID ? api.state.session.get(initialSession.parentID) : undefined,
   );
+  const [pending, setPending] = createSignal(peekPendingProfile());
 
   function currentTitle() {
     if (!sessionID) {
-      return visibleProfileTitle(
-        undefined,
-        undefined,
-        options.value.profile,
-        options.value.profiles,
-      );
+      return visibleHomeProfileTitle(pending(), options.value.profile, options.value.profiles);
     }
     return visibleProfileTitle(session(), parent(), options.value.profile, options.value.profiles);
   }
@@ -51,7 +48,11 @@ function ProfileSlot({ api, options, theme, sessionID }: Props) {
   }
 
   onMount(() => {
-    if (!sessionID) return;
+    if (!sessionID) {
+      const dispose = subscribePendingProfile(setPending);
+      onCleanup(dispose);
+      return;
+    }
     const dispose = api.event.on("session.updated", (event) => {
       const updated = event.properties.info;
       if (updated.id === sessionID) {

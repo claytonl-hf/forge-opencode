@@ -7,23 +7,37 @@ import {
 } from "./profile";
 
 let pendingProfile: string | null | undefined;
+type PendingProfileListener = (value: string | null | undefined) => void;
+const pendingProfileListeners = new Set<PendingProfileListener>();
+
+function notifyPendingProfile() {
+  for (const listener of pendingProfileListeners) listener(pendingProfile);
+}
 
 export function writePendingProfile(name: string | null): void {
   pendingProfile = name;
+  notifyPendingProfile();
 }
 
 export function clearPendingProfile(): void {
   pendingProfile = undefined;
+  notifyPendingProfile();
 }
 
 export function takePendingProfile(): string | null | undefined {
   const value = pendingProfile;
   pendingProfile = undefined;
+  notifyPendingProfile();
   return value;
 }
 
 export function peekPendingProfile(): string | null | undefined {
   return pendingProfile;
+}
+
+export function subscribePendingProfile(listener: PendingProfileListener): () => void {
+  pendingProfileListeners.add(listener);
+  return () => pendingProfileListeners.delete(listener);
 }
 
 export async function applyPendingProfile(input: {

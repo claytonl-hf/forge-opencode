@@ -510,6 +510,14 @@ export function visibleProfileTitle(
   return profileTitle(profiles?.[selection], selection);
 }
 
+export function visibleHomeProfileTitle(
+  pendingProfile: string | null | undefined,
+  globalProfile: string | undefined,
+  profiles: Record<string, Profile> | undefined,
+): string | undefined {
+  return visibleProfileTitle(undefined, undefined, pendingProfile || globalProfile, profiles);
+}
+
 export function filterOptions<Value>(options: SelectOption<Value>[], query: string) {
   const needle = query.trim().toLowerCase();
   if (!needle) return options;
