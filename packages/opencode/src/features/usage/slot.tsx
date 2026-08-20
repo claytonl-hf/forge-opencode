@@ -17,7 +17,7 @@ type Props = ComponentProps<"box"> &
     variant: "line" | "status";
   };
 
-export function Usage({ api, theme, forge, poll, variant, ...props }: Props) {
+function Usage({ api, theme, forge, poll, variant, ...props }: Props) {
   const [usage, setUsage] = createSignal<ForgeUsage>();
   const balance = () => {
     const value = usage()?.budget.spentCreditsToday ?? 0;

@@ -1,82 +1,55 @@
 import { dirname, join } from "node:path";
 
-import { ForgeNotReady, ForgeError } from "./errors";
-import { getModels } from "./models";
+import { client } from "./api/client";
+import { EnvResponseSchema, type ForgeEnvironment } from "./api/env";
+import { getModels, ModelsResponseSchema, type ForgeModels } from "./api/models";
+import { PingResponseSchema, type ForgeStatus } from "./api/ping";
+import { ForgeNotReady } from "./errors";
 import { listAgents } from "./resources/agents";
 import { listCommands } from "./resources/commands";
 import { getUsage } from "./resources/usage";
 import { store, Store } from "./store";
-import {
-  ForgeStatus,
-  ForgeEnvironment,
-  ForgeOpenCode,
-  ForgeCatalog,
-  type ForgeModels,
-  type ForgeProvider,
-} from "./types";
+import { ForgeOpenCode, type ForgeProvider } from "./types";
 import { exists } from "./utils";
 
-export const ForgeMinimumVersion = "0.2.179";
+export const ForgeMinimumVersion = "0.2.189";
 
 export class Forge {
   private environment?: ForgeEnvironment;
+  private readonly request: ReturnType<typeof client>;
 
   constructor(
     public readonly path: string,
     public readonly uri: string,
     public readonly token: string,
-  ) {}
+  ) {
+    this.request = client(uri, token);
+  }
 
   get directory() {
     return dirname(this.path);
   }
 
-  async request<T>(path: string, options: RequestInit = {}): Promise<T> {
-    const headers = new Headers(options.headers);
-    headers.set("Authorization", `Bearer ${this.token}`);
-
-    const response = await fetch(`${this.uri}${path}`, {
-      ...options,
-      headers,
-      redirect: "error",
-      signal: AbortSignal.timeout(8_000),
-    });
-
-    if (!response.ok) {
-      throw new ForgeNotReady(
-        `Forge is not reachable. Request to ${path} failed with status ${response.status} ${response.statusText}.`,
-      );
-    }
-
-    // SAFETY: callers select T for this untyped transport method and owning methods parse responses.
-    return response.json() as Promise<T>;
+  get api() {
+    return {
+      request: this.request,
+      env: () => this.request("/v1/env", { schema: EnvResponseSchema }),
+      models: () => this.request("/v1/models", { schema: ModelsResponseSchema }),
+      ping: () => this.request("/v1/ping", { schema: PingResponseSchema }),
+    };
   }
 
-  async ping() {
-    const response = await this.request("/v1/ping");
-    const { success, data, error } = ForgeStatus.safeParse(response);
-
-    if (!success) {
-      throw new ForgeError(`Forge ping response is malformed. ${error?.message}`);
-    }
-
-    return data;
+  async status(): Promise<ForgeStatus> {
+    return await this.api.ping();
   }
 
-  async env(fresh = false) {
+  async state(fresh = false): Promise<ForgeEnvironment> {
     if (!this.environment && !fresh) {
       this.environment = await store.get(Store.Environment);
     }
 
     if (!this.environment || fresh) {
-      const response = await this.request("/v1/env");
-      const { success, data, error } = ForgeEnvironment.safeParse(response);
-
-      if (!success) {
-        throw new ForgeError(`Forge environment is malformed. ${error?.message}`);
-      }
-
-      this.environment = data;
+      this.environment = await this.api.env();
       await store.set(Store.Environment, this.environment);
     }
 
@@ -84,7 +57,7 @@ export class Forge {
   }
 
   async opencode() {
-    const { env, opencodeBin } = await this.env();
+    const { env, opencodeBin } = await this.state();
     const bootstrap =
       env?.FORGE_TERMINAL_BOOTSTRAP_DIR || join(this.directory, "terminal-bootstrap");
     const oc = ForgeOpenCode.parse({
@@ -114,59 +87,35 @@ export class Forge {
     return oc;
   }
 
-  async catalog() {
-    try {
-      const { env } = await this.env();
-      const { success, data, error } = ForgeCatalog.safeParse(
-        JSON.parse(env.FORGE_OPENCODE_MODEL_CATALOG_JSON),
-      );
-
-      if (!success) {
-        throw new ForgeError(`Forge catalog is malformed. ${error?.message}`);
-      }
-
-      return data;
-    } catch {
-      return undefined;
-    }
-  }
-
   async models(): Promise<ForgeModels> {
-    const catalog = await this.catalog();
+    const catalog = await this.api.models();
+    const models = await getModels(catalog.opencode.models);
 
-    return await getModels(
-      (catalog?.models ?? []).map((model) => ({
-        id: model.id,
-        name: model.name,
-        limit: model.limit,
-      })),
-    );
+    return models;
   }
 
   async agents() {
-    const [catalog, opencode] = await Promise.all([this.catalog(), this.opencode()]);
+    const [models, opencode] = await Promise.all([this.api.models(), this.opencode()]);
     const agents = await listAgents(opencode.directories.agents);
     const provider = await this.provider();
 
-    await Promise.all(
-      Object.entries(agents).map(async ([name, agent]) => {
-        const options = (catalog?.agents ?? []).find((agent) => agent.role === name);
+    for (const [name, agent] of Object.entries(agents)) {
+      const options = (models?.opencode?.agents ?? []).find((agent) => agent.role === name);
 
-        agents[name] = {
-          ...agent,
-          name,
-          model: options?.model ? `${provider!.id}/${options.model}` : undefined,
-          variant: options?.reasoningEffort,
-        };
-      }),
-    );
+      agents[name] = {
+        ...agent,
+        name,
+        model: options?.model ? `${provider!.id}/${options.model}` : undefined,
+        variant: options?.reasoningEffort?.toString(),
+      };
+    }
 
     return agents;
   }
 
   async provider(): Promise<ForgeProvider | undefined> {
     try {
-      const { env } = await this.env();
+      const { env } = await this.state();
       const models = await this.models();
 
       if (Object.keys(models).length === 0) {
@@ -193,7 +142,7 @@ export class Forge {
   }
 
   async usage() {
-    const { env } = await this.env();
+    const { env } = await this.state();
     const file = env.FORGE_USAGE_SNAPSHOT_FILE;
 
     return file ? await getUsage(file) : undefined;
@@ -208,7 +157,7 @@ export class Forge {
 
   async mcp() {
     try {
-      const { env } = await this.env();
+      const { env } = await this.state();
 
       return {
         type: "remote" as const,

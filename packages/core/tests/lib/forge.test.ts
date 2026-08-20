@@ -1,16 +1,38 @@
-import { afterEach, describe, expect, mock, spyOn, test } from "bun:test";
+import { afterAll, afterEach, beforeAll, describe, expect, test } from "bun:test";
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
+import { createServer, type IncomingHttpHeaders } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { z } from "zod";
 
 import type { ForgeEnvironment } from "../../src/lib/types";
 
-import { ForgeError } from "../../src/lib/errors";
+import { ForgeNotReady } from "../../src/lib/errors";
 import { Forge } from "../../src/lib/forge";
 import { Store, store } from "../../src/lib/store";
 
-const originalFetch = globalThis.fetch;
+type RouteResponse = { body: unknown; status?: number };
+type Route =
+  | { response: RouteResponse }
+  | { handler: () => RouteResponse | Promise<RouteResponse> };
+
+const routes = new Map<string, Route>();
+const requestCounts = new Map<string, number>();
 const directories: string[] = [];
+let server: ReturnType<typeof createServer>;
+let uri = "";
+let lastRequest:
+  | {
+      method: string | undefined;
+      url: string | undefined;
+      headers: IncomingHttpHeaders;
+      body: string;
+    }
+  | undefined;
+
+function setRoute(path: string, response: Route): void {
+  routes.set(path, response);
+}
 
 function environment(overrides: Partial<ForgeEnvironment["env"]> = {}): ForgeEnvironment {
   return {
@@ -23,7 +45,7 @@ function environment(overrides: Partial<ForgeEnvironment["env"]> = {}): ForgeEnv
       FORGE_SUPABASE_ACCESS_TOKEN: "access-token",
       FORGE_OPENCODE_MODEL_CATALOG_JSON: JSON.stringify({
         source: "forge",
-        defaultModelId: "openai/gpt-5",
+        defaultModelId: "openai/gpt-5.6-luna",
         models: [],
         agents: [],
       }),
@@ -36,57 +58,134 @@ function environment(overrides: Partial<ForgeEnvironment["env"]> = {}): ForgeEnv
   };
 }
 
-function forge(): Forge {
-  return new Forge("/Applications/Forge.app/Contents/MacOS/Forge", "http://forge.test", "token");
+function model() {
+  return {
+    id: "openai/gpt-5.6-luna",
+    name: "GPT-5.6 Luna",
+    isDefault: true,
+    limit: { context: 128_000, output: 8_192 },
+    group: "openai",
+    visionCapable: false,
+    intelligence: 5,
+    speedTier: "fast",
+    tokensPerSec: 100,
+    costTier: "low",
+    band: "$",
+    costInput: 1,
+    costOutput: 2,
+    contextLimit: 128_000,
+    outputLimit: 8_192,
+    tags: [],
+    capabilities: ["text"],
+    reasoningModes: ["none", "low", "medium", "high", "xhigh", "max"],
+    reasoningDefault: "high",
+  };
 }
 
-function mockRequest<Response>(instance: Forge, implementation: () => Response) {
-  return spyOn(instance, "request").mockResolvedValue(implementation());
+function modelsResponse() {
+  return {
+    source: "forge",
+    localModelsMerged: true,
+    reasoningEfforts: ["high"],
+    opencode: {
+      defaultModelId: "openai/gpt-5.6-luna",
+      models: [model()],
+      agents: [{ role: "reviewer", model: "openai/gpt-5.6-luna", reasoningEffort: "high" }],
+    },
+    budget: {
+      exhausted: false,
+      spentUsd: 0,
+      dailyBudgetUsd: 100,
+      remainingUsd: 100,
+      enforced: true,
+    },
+  };
 }
+
+function forge(): Forge {
+  return new Forge("/Applications/Forge.app/Contents/MacOS/Forge", uri, "token");
+}
+
+beforeAll(async () => {
+  server = createServer(async (request, response) => {
+    const chunks: Buffer[] = [];
+    for await (const chunk of request) {
+      chunks.push(Buffer.from(chunk));
+    }
+
+    const path = request.url ?? "/";
+    requestCounts.set(path, (requestCounts.get(path) ?? 0) + 1);
+    lastRequest = {
+      method: request.method,
+      url: request.url,
+      headers: request.headers,
+      body: Buffer.concat(chunks).toString("utf8"),
+    };
+
+    const configured = routes.get(path);
+    const route = configured
+      ? "response" in configured
+        ? configured.response
+        : await configured.handler()
+      : { status: 404, body: { error: "not found" } };
+
+    response.statusCode = route.status ?? 200;
+    response.setHeader("Content-Type", "application/json");
+    response.end(JSON.stringify(route.body));
+  });
+
+  await new Promise<void>((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", resolve);
+  });
+
+  const address = server.address();
+  const result = z.object({ port: z.number() }).safeParse(address);
+  if (!result.success) {
+    throw new Error("Test server did not expose a TCP address.");
+  }
+
+  uri = `http://127.0.0.1:${result.data.port}`;
+});
+
+afterAll(async () => {
+  await new Promise<void>((resolve, reject) => {
+    server.close((error) => (error ? reject(error) : resolve()));
+  });
+});
 
 afterEach(async () => {
-  globalThis.fetch = originalFetch;
-  mock.restore();
+  routes.clear();
+  requestCounts.clear();
+  lastRequest = undefined;
+  await store.clear(Store.Environment);
   await Promise.all(directories.splice(0).map((path) => rm(path, { recursive: true })));
 });
 
-describe("Forge.request", () => {
+describe("Forge.api.request", () => {
   test("sends authenticated requests while preserving options and caller headers", async () => {
-    const fetchMock = mock(async (_input: string | URL | Request, _init?: RequestInit) =>
-      Response.json({ value: 42 }),
-    );
-    globalThis.fetch = Object.assign(
-      (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) =>
-        fetchMock(input, init),
-      {
-        preconnect: originalFetch.preconnect,
-      },
-    );
+    setRoute("/v1/value", { response: { body: { value: 42 } } });
 
-    const result = await forge().request<{ value: number }>("/v1/value", {
+    const result = await forge().api.request<{ value: number }>("/v1/value", {
       method: "POST",
       headers: { "X-Request-ID": "request-1", Authorization: "Bearer wrong-token" },
       body: "payload",
     });
 
     expect(result).toEqual({ value: 42 });
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    const [url, options] = fetchMock.mock.calls[0]!;
-    expect(url).toBe("http://forge.test/v1/value");
-    expect(options).toMatchObject({ method: "POST", body: "payload", redirect: "error" });
-    const headers = new Headers(options?.headers);
-    expect(headers.get("Authorization")).toBe("Bearer token");
-    expect(headers.get("X-Request-ID")).toBe("request-1");
-    expect(options?.signal).toBeInstanceOf(AbortSignal);
+    expect(lastRequest).toMatchObject({
+      method: "POST",
+      url: "/v1/value",
+      body: "payload",
+    });
+    expect(lastRequest?.headers.authorization).toBe("Bearer token");
+    expect(lastRequest?.headers["x-request-id"]).toBe("request-1");
   });
 
   test("turns a non-success response into ForgeNotReady", async () => {
-    const fetchMock = mock(
-      async () => new Response("unavailable", { status: 503, statusText: "Service Unavailable" }),
-    );
-    globalThis.fetch = Object.assign(() => fetchMock(), { preconnect: originalFetch.preconnect });
+    setRoute("/v1/ping", { response: { status: 503, body: "unavailable" } });
 
-    await expect(forge().request("/v1/ping")).rejects.toEqual(
+    await expect(forge().api.request("/v1/ping")).rejects.toEqual(
       expect.objectContaining({
         name: "ForgeNotReady",
         message:
@@ -97,100 +196,83 @@ describe("Forge.request", () => {
 });
 
 describe("Forge response validation", () => {
-  test("ping accepts a valid response", async () => {
-    const instance = forge();
-    mockRequest(instance, () => ({ ok: true, signedIn: true, version: "0.2.179" }));
-
-    expect(await instance.ping()).toEqual({ ok: true, signedIn: true, version: "0.2.179" });
-  });
-
-  test("ping rejects a malformed response", async () => {
-    const instance = forge();
-    mockRequest(instance, () => ({ ok: "yes", version: 1 }));
-
-    await expect(instance.ping()).rejects.toBeInstanceOf(ForgeError);
-    await expect(instance.ping()).rejects.toThrow("Forge ping response is malformed.");
-  });
-
-  test("catalog parses valid data and degrades to undefined for invalid data", async () => {
-    const valid = forge();
-    valid.env = mock(async () => environment());
-    expect(await valid.catalog()).toMatchObject({
-      source: "forge",
-      defaultModelId: "openai/gpt-5",
+  test("status accepts a valid response", async () => {
+    setRoute("/v1/ping", {
+      response: { body: { ok: true, signedIn: true, version: "0.2.189" } },
     });
 
-    const invalidJson = forge();
-    invalidJson.env = mock(async () => environment({ FORGE_OPENCODE_MODEL_CATALOG_JSON: "{" }));
-    expect(await invalidJson.catalog()).toBeUndefined();
+    expect(await forge().status()).toEqual({ ok: true, signedIn: true, version: "0.2.189" });
+  });
 
-    const invalidSchema = forge();
-    invalidSchema.env = mock(async () =>
-      environment({ FORGE_OPENCODE_MODEL_CATALOG_JSON: JSON.stringify({ source: 42 }) }),
-    );
-    expect(await invalidSchema.catalog()).toBeUndefined();
+  test("status rejects a malformed response", async () => {
+    setRoute("/v1/ping", { response: { body: { ok: "yes", version: 1 } } });
+
+    await expect(forge().status()).rejects.toBeInstanceOf(ForgeNotReady);
+    await expect(forge().status()).rejects.toThrow("Forge response for /v1/ping is malformed.");
+  });
+
+  test("api.models parses valid data and rejects invalid data", async () => {
+    setRoute("/v1/models", { response: { body: modelsResponse() } });
+
+    expect(await forge().api.models()).toMatchObject({
+      source: "forge",
+      opencode: { defaultModelId: "openai/gpt-5.6-luna" },
+    });
+
+    setRoute("/v1/models", { response: { body: { source: 42 } } });
+    await expect(forge().api.models()).rejects.toBeInstanceOf(ForgeNotReady);
   });
 
   test("mcp exposes the configured endpoint without leaking errors", async () => {
-    const valid = forge();
-    valid.env = mock(async () => environment());
-    expect(await valid.mcp()).toEqual({
+    setRoute("/v1/env", { response: { body: environment() } });
+    expect(await forge().mcp()).toEqual({
       type: "remote",
       url: "http://127.0.0.1:4312/mcp",
       headers: { Authorization: "Bearer mcp-token" },
     });
 
-    const unavailable = forge();
-    unavailable.env = mock(async () => {
-      throw new Error("unavailable");
-    });
-    expect(await unavailable.mcp()).toBeUndefined();
+    await store.clear(Store.Environment);
+    setRoute("/v1/env", { response: { status: 503, body: "unavailable" } });
+    expect(await forge().mcp()).toBeUndefined();
   });
 });
 
-describe("Forge.env", () => {
+describe("Forge.state", () => {
   test("hydrates from persistent storage and then uses its in-memory cache", async () => {
     const cached = environment({ FORGE_MCP_TOKEN: "cached" });
-    const get = spyOn(store, "get").mockResolvedValue(cached);
-    const instance = forge();
-    const request = mockRequest(instance, () => environment({ FORGE_MCP_TOKEN: "remote" }));
+    setRoute("/v1/env", { response: { body: cached } });
 
-    expect(await instance.env()).toBe(cached);
-    expect(await instance.env()).toBe(cached);
-    expect(get).toHaveBeenCalledTimes(1);
-    expect(get).toHaveBeenCalledWith(Store.Environment);
-    expect(request).not.toHaveBeenCalled();
+    const first = forge();
+    expect(await first.state()).toEqual(cached);
+
+    const second = forge();
+    expect(await second.state()).toEqual(cached);
+    expect(await second.state()).toEqual(cached);
+    expect(requestCounts.get("/v1/env")).toBe(1);
   });
 
   test("fetches, validates, persists, and caches a fresh environment", async () => {
     const first = environment({ FORGE_MCP_TOKEN: "first" });
     const second = environment({ FORGE_MCP_TOKEN: "second" });
-    spyOn(store, "get").mockResolvedValue(undefined);
-    const set = spyOn(store, "set").mockResolvedValue(undefined);
-    const instance = forge();
     let response = first;
-    const request = mockRequest(instance, () => response);
+    setRoute("/v1/env", { handler: () => ({ body: response }) });
 
-    expect(await instance.env()).toEqual(first);
-    expect(await instance.env()).toEqual(first);
+    const instance = forge();
+    expect(await instance.state()).toEqual(first);
+    expect(await instance.state()).toEqual(first);
     response = second;
-    request.mockResolvedValue(response);
-    expect(await instance.env(true)).toEqual(second);
-    expect(await instance.env()).toEqual(second);
+    expect(await instance.state(true)).toEqual(second);
+    expect(await instance.state()).toEqual(second);
 
-    expect(request).toHaveBeenCalledTimes(2);
-    expect(set).toHaveBeenNthCalledWith(1, Store.Environment, first);
-    expect(set).toHaveBeenNthCalledWith(2, Store.Environment, second);
+    expect(requestCounts.get("/v1/env")).toBe(2);
+    expect(await store.get(Store.Environment)).toEqual(second);
   });
 
   test("rejects a malformed environment without persisting it", async () => {
-    spyOn(store, "get").mockResolvedValue(undefined);
-    const set = spyOn(store, "set").mockResolvedValue(undefined);
-    const instance = forge();
-    mockRequest(instance, () => ({ signedIn: true, env: {} }));
+    setRoute("/v1/env", { response: { body: { signedIn: true, env: {} } } });
 
-    await expect(instance.env()).rejects.toBeInstanceOf(ForgeError);
-    expect(set).not.toHaveBeenCalled();
+    await expect(forge().state(true)).rejects.toBeInstanceOf(ForgeNotReady);
+    expect(await store.get(Store.Environment)).toBeUndefined();
   });
 });
 
@@ -203,15 +285,16 @@ describe("Forge OpenCode resources", () => {
         mkdir(join(bootstrap, name)),
       ),
     );
-    const instance = forge();
-    instance.env = mock(async () =>
-      environment({
-        FORGE_TERMINAL_BOOTSTRAP_DIR: bootstrap,
-        FORGE_OPENCODE_ATTACH_URL: "http://127.0.0.1:4096",
-      }),
-    );
+    setRoute("/v1/env", {
+      response: {
+        body: environment({
+          FORGE_TERMINAL_BOOTSTRAP_DIR: bootstrap,
+          FORGE_OPENCODE_ATTACH_URL: "http://127.0.0.1:4096",
+        }),
+      },
+    });
 
-    expect(await instance.opencode()).toEqual({
+    expect(await forge().opencode()).toEqual({
       bin: "/usr/local/bin/opencode",
       directories: {
         agents: join(bootstrap, "opencode-agents"),
@@ -230,10 +313,11 @@ describe("Forge OpenCode resources", () => {
   test("identifies an inaccessible OpenCode directory", async () => {
     const bootstrap = await mkdtemp(join(tmpdir(), "forge-bootstrap-"));
     directories.push(bootstrap);
-    const instance = forge();
-    instance.env = mock(async () => environment({ FORGE_TERMINAL_BOOTSTRAP_DIR: bootstrap }));
+    setRoute("/v1/env", {
+      response: { body: environment({ FORGE_TERMINAL_BOOTSTRAP_DIR: bootstrap }) },
+    });
 
-    await expect(instance.opencode()).rejects.toEqual(
+    await expect(forge().opencode()).rejects.toEqual(
       expect.objectContaining({
         name: "ForgeNotReady",
         message: expect.stringContaining("directory agents is not accessible"),
@@ -242,36 +326,28 @@ describe("Forge OpenCode resources", () => {
   });
 
   test("enriches agents with catalog model configuration", async () => {
-    const path = await mkdtemp(join(tmpdir(), "forge-agents-"));
-    directories.push(path);
-    await Bun.write(join(path, "reviewer.md"), "---\ndescription: Reviews code\n---\nReview.\n");
-    const instance = forge();
-    instance.opencode = mock(async () => ({
-      bin: "opencode",
-      directories: { agents: path, commands: path, themes: path, plugins: path },
-      permissions: [],
-      bridge: { web: { file: "", url: undefined }, notifier: "" },
-    }));
-    instance.catalog = mock(async () => ({
-      source: "forge",
-      defaultModelId: "gpt-5",
-      models: [],
-      agents: [{ role: "reviewer", model: "gpt-5", reasoningEffort: "high" }],
-    }));
-    instance.provider = mock(async () => ({
-      id: "forge",
-      name: "Forge",
-      package: "provider",
-      api: { endpoint: "", key: "", headers: {} },
-      models: {},
-    }));
+    const bootstrap = await mkdtemp(join(tmpdir(), "forge-agents-"));
+    directories.push(bootstrap);
+    await Promise.all(
+      ["opencode-agents", "opencode-commands", "opencode-themes", "opencode-plugins"].map((name) =>
+        mkdir(join(bootstrap, name)),
+      ),
+    );
+    await Bun.write(
+      join(bootstrap, "opencode-agents", "reviewer.md"),
+      "---\ndescription: Reviews code\n---\nReview.\n",
+    );
+    setRoute("/v1/env", {
+      response: { body: environment({ FORGE_TERMINAL_BOOTSTRAP_DIR: bootstrap }) },
+    });
+    setRoute("/v1/models", { response: { body: modelsResponse() } });
 
-    expect(await instance.agents()).toEqual({
+    expect(await forge().agents()).toEqual({
       reviewer: {
         name: "reviewer",
         description: "Reviews code",
         prompt: "Review.\n",
-        model: "forge/gpt-5",
+        model: "forge/openai/gpt-5.6-luna",
         variant: "high",
       },
     });
@@ -280,9 +356,8 @@ describe("Forge OpenCode resources", () => {
 
 describe("Forge.usage", () => {
   test("returns undefined when no snapshot is configured", async () => {
-    const instance = forge();
-    instance.env = mock(async () => environment());
+    setRoute("/v1/env", { response: { body: environment() } });
 
-    expect(await instance.usage()).toBeUndefined();
+    expect(await forge().usage()).toBeUndefined();
   });
 });

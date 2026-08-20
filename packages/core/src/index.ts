@@ -26,7 +26,7 @@ export async function createForge() {
       `http://${instance.host}:${instance.port}`,
       instance.token,
     );
-    const status = await api.ping();
+    const status = await api.status();
     const version = createVersion(status.version);
 
     if (!version || !version.satisfies(`>=${ForgeMinimumVersion}`)) {

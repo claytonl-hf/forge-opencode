@@ -1,6 +1,7 @@
 import { Client, StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
 import { expect, setDefaultTimeout, test } from "bun:test";
 
+import { prompt } from "../scripts/prompt";
 import { createForge } from "../src/index";
 import { handshake } from "../src/lib/handshake";
 
@@ -34,9 +35,9 @@ test.serial("parses the default Forge handshake", async () => {
   expect(Number.isNaN(Date.parse(result.started))).toBe(false);
 });
 
-test.serial("connects to Forge and responds to ping", async () => {
+test.serial("can determine forge status", async () => {
   const forge = await connect();
-  const status = await forge.ping();
+  const status = await forge.status();
 
   expect(status.ok).toBe(true);
   expect(status.signedIn).toBe(true);
@@ -54,8 +55,8 @@ test.serial("can call .agents(), .commands(), and .opencode() without errors", a
 
 test.serial("returns the Forge environment and model catalog", async () => {
   const forge = await connect();
-  const environment = await forge.env(true);
-  const catalog = await forge.catalog();
+  const environment = await forge.state(true);
+  const catalog = await forge.api.models();
 
   expect(environment.signedIn).toBe(true);
   expect(environment.opencodeBin).toEqual(expect.any(String));
@@ -68,11 +69,11 @@ test.serial("returns the Forge environment and model catalog", async () => {
   expect(catalog).toBeDefined();
   expect(catalog?.source).toEqual(expect.any(String));
   expect(catalog?.source.length).toBeGreaterThan(0);
-  expect(catalog?.defaultModelId).toEqual(expect.any(String));
-  expect(catalog?.defaultModelId.length).toBeGreaterThan(0);
-  expect(Array.isArray(catalog?.models)).toBe(true);
-  expect(catalog?.models.length).toBeGreaterThan(0);
-  expect(Array.isArray(catalog?.agents)).toBe(true);
+  expect(catalog?.opencode.defaultModelId).toEqual(expect.any(String));
+  expect(catalog?.opencode.defaultModelId?.length).toBeGreaterThan(0);
+  expect(Array.isArray(catalog?.opencode.models)).toBe(true);
+  expect(catalog?.opencode.models.length).toBeGreaterThan(0);
+  expect(Array.isArray(catalog?.opencode.agents)).toBe(true);
 });
 
 test.serial("lists tools through the configured Forge MCP endpoint", async () => {
@@ -111,3 +112,28 @@ test.serial("lists tools through the configured Forge MCP endpoint", async () =>
     await client.close();
   }
 });
+
+test.serial(
+  "model reasoning options are available",
+  async () => {
+    const forge = await connect();
+    const provider = await forge.provider();
+
+    expect(provider).toBeDefined();
+    if (!provider) {
+      throw new Error("Forge provider configuration is unavailable.");
+    }
+
+    for (const reasoningEffort of ["low", "medium", "high"] as const) {
+      const result = await prompt(
+        provider,
+        "google/gemini-3.7-flash",
+        "Reply with the single word ok.",
+        { reasoningEffort },
+      );
+
+      expect(result.text.trim().length).toBeGreaterThan(0);
+    }
+  },
+  { timeout: 90_000 },
+);

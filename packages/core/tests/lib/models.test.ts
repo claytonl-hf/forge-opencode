@@ -1,40 +1,73 @@
 import { describe, expect, test } from "bun:test";
 
-import { getModels } from "../../src/lib/models";
+import { getModels, ModelsResponseSchema } from "../../src/lib/api/models";
+
+function model() {
+  return {
+    id: "openai/gpt-5.6-luna",
+    name: "GPT-5.6 Luna",
+    isDefault: true,
+    limit: { context: 128_000, output: 8_192 },
+    group: "openai",
+    visionCapable: false,
+    intelligence: 5,
+    speedTier: "fast",
+    tokensPerSec: 100,
+    costTier: "low",
+    band: "$",
+    costInput: 1,
+    costOutput: 2,
+    contextLimit: 128_000,
+    outputLimit: 8_192,
+    tags: [],
+    capabilities: ["text"],
+    reasoningModes: ["none", "low", "medium", "high", "xhigh", "max"],
+    reasoningDefault: "high",
+  };
+}
+
+function models(models: unknown[]) {
+  return ModelsResponseSchema.parse({
+    source: "forge",
+    localModelsMerged: true,
+    reasoningEfforts: ["high"],
+    opencode: { models, agents: [] },
+    budget: {
+      exhausted: false,
+      spentUsd: 0,
+      dailyBudgetUsd: 100,
+      remainingUsd: 100,
+      enforced: true,
+    },
+  }).opencode.models;
+}
 
 describe("getModels", () => {
-  test("adds Forge reasoning variants to known models", async () => {
-    const models = await getModels([
-      { id: "openai/gpt-5.6-luna", name: "GPT-5.6 Luna" },
-      { id: "anthropic/claude-opus-5", name: "Claude Opus 5" },
-      { id: "deepseek/deepseek-v4-flash-0731", name: "DeepSeek V4 Flash" },
-    ]);
+  test("adds Forge metadata and reasoning options to known models", async () => {
+    const result = await getModels(models([model()]));
+    const item = result["openai/gpt-5.6-luna"];
 
-    expect(models["openai/gpt-5.6-luna"]?.variants).toEqual({
-      none: { reasoning: { effort: "none" } },
-      low: { reasoning: { effort: "low" } },
-      medium: { reasoning: { effort: "medium" } },
-      high: { reasoning: { effort: "high" } },
-      xhigh: { reasoning: { effort: "xhigh" } },
-      max: { reasoning: { effort: "max" } },
+    expect(item).toMatchObject({
+      id: "openai/gpt-5.6-luna",
+      name: "GPT-5.6 Luna",
+      limit: { context: 128_000, output: 8_192 },
+      cost: { input: 1, output: 2 },
+      metadata: {
+        cost: { tier: "low", band: "$" },
+        speed: { rate: 100, tier: "fast" },
+      },
+      reasoning_options: [
+        { type: "effort", values: ["none", "low", "medium", "high", "xhigh", "max"] },
+      ],
     });
-    expect(Object.keys(models["anthropic/claude-opus-5"]?.variants ?? {})).toEqual([
-      "low",
-      "medium",
-      "high",
-      "xhigh",
-      "max",
-    ]);
-    expect(Object.keys(models["deepseek/deepseek-v4-flash-0731"]?.variants ?? {})).toEqual([
-      "low",
-      "high",
-      "max",
-    ]);
   });
 
-  test("does not add variants to models without an explicit Forge mapping", async () => {
-    const models = await getModels([{ id: "moonshotai/kimi-k2.7-code", name: "Kimi K2.7 Code" }]);
+  test("skips models that are not present in OpenRouter", async () => {
+    const unknown = model();
+    unknown.id = "unknown/provider-model";
+    unknown.name = "Unknown Provider Model";
+    const result = await getModels(models([unknown]));
 
-    expect(models["moonshotai/kimi-k2.7-code"]?.variants).toBeUndefined();
+    expect(result["unknown/provider-model"]).toBeUndefined();
   });
 });

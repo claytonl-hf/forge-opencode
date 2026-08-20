@@ -8,7 +8,7 @@ console.log(`→ URI: ${forge.uri}`);
 console.log(`→ Token: ${forge.token}`);
 console.groupEnd();
 
-const env = await forge.env();
+const env = await forge.state();
 
 console.group("Environment");
 for (const [key, value] of Object.entries(env.env)) {
