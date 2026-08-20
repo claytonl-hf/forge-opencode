@@ -69,9 +69,12 @@ export const ProfileIntegration: Integration = async (forge, forgeOptions) => {
           metadata: info.metadata,
           profiles: forgeOptions.value.profiles ?? {},
           getParent: async (id) => api.state.session.get(id),
-          update: (sessionID, metadata) => api.client.session.update({ sessionID, metadata }),
-          switchModel: (sessionID, model) =>
-            api.client.v2.session.switchModel({ sessionID, model }, { throwOnError: true }),
+          update: async (sessionID, metadata) => {
+            await api.client.session.update({ sessionID, metadata });
+          },
+          switchModel: async (sessionID, model) => {
+            await api.client.v2.session.switchModel({ sessionID, model }, { throwOnError: true });
+          },
         });
       });
 

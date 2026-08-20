@@ -20,6 +20,7 @@ import {
 import {
   DesktopProfile,
   filterOptions,
+  ProfileScope,
   resolveProfileSelection,
   serializeProfileSelection,
   visibleHomeProfileTitle,
@@ -435,11 +436,12 @@ describe("profile session hooks", () => {
     await hooks["chat.message"]?.(input, output);
 
     expect(input.model).toBe(inputModel);
-    expect(output.message.model).toEqual({
+    const model = {
       providerID: "forge",
       modelID: "reviewer",
       variant: "high",
-    });
+    };
+    expect(output.message.model).toEqual(model);
   });
 });
 
@@ -468,7 +470,7 @@ describe("ProfileCommand", () => {
     };
     const api = createSaveApi(session, sessionUpdates, switches);
 
-    await saveProfile("balanced", "session", { api, options, profiles });
+    await saveProfile("balanced", ProfileScope.Session, { api, options, profiles });
 
     expect(options.value.profile).toBe("existing");
     expect(sessionUpdates).toEqual([
@@ -503,7 +505,7 @@ describe("ProfileCommand", () => {
       writePendingProfile("stale");
       const api = createSaveApi(session, sessionUpdates, switches, "/tmp", true);
 
-      await saveProfile("balanced", "session", { api, options, profiles });
+      await saveProfile("balanced", ProfileScope.Session, { api, options, profiles });
 
       expect(sessionUpdates).toEqual([
         { sessionID: "session", metadata: { [PROFILE_METADATA_KEY]: "balanced" } },
@@ -532,7 +534,7 @@ describe("ProfileCommand", () => {
     };
     const api = createSaveApi(session, sessionUpdates, switches);
 
-    await saveProfile("balanced", "global", { api, options, profiles });
+    await saveProfile("balanced", ProfileScope.Global, { api, options, profiles });
 
     expect(options.value.profile).toBe("balanced");
     expect(sessionUpdates).toEqual([
@@ -562,7 +564,7 @@ describe("ProfileCommand", () => {
     };
     const api = createSaveApi(session, sessionUpdates, switches);
 
-    await saveProfile(null, "session", { api, options, profiles });
+    await saveProfile(null, ProfileScope.Session, { api, options, profiles });
 
     expect(options.value.profile).toBe("existing");
     expect(options.writes).toHaveLength(0);
@@ -586,7 +588,7 @@ describe("ProfileCommand", () => {
     };
     const api = createSaveApi(session, sessionUpdates, switches);
 
-    await saveProfile(DesktopProfile, "session", { api, options, profiles });
+    await saveProfile(DesktopProfile, ProfileScope.Session, { api, options, profiles });
 
     expect(options.value.profile).toBe("existing");
     expect(options.writes).toHaveLength(0);
@@ -610,7 +612,7 @@ describe("ProfileCommand", () => {
     };
     const api = createSaveApi(session, sessionUpdates, switches);
 
-    await saveProfile(null, "global", { api, options, profiles });
+    await saveProfile(null, ProfileScope.Global, { api, options, profiles });
 
     expect(options.value.profile).toBeUndefined();
     expect(options.writes).toHaveLength(1);
@@ -634,7 +636,7 @@ describe("ProfileCommand", () => {
     };
     const api = createSaveApi(session, sessionUpdates, switches);
 
-    await saveProfile(DesktopProfile, "global", { api, options, profiles });
+    await saveProfile(DesktopProfile, ProfileScope.Global, { api, options, profiles });
 
     expect(options.value.profile).toBe("default");
     expect(options.writes).toHaveLength(1);
@@ -653,7 +655,7 @@ describe("ProfileCommand", () => {
         route: { current: { name: "home" } },
       });
 
-      await saveProfile("balanced", "session", { api, options, profiles });
+      await saveProfile("balanced", ProfileScope.Session, { api, options, profiles });
 
       expect(options.value.profile).toBe("existing");
       expect(options.writes).toHaveLength(0);
@@ -677,7 +679,7 @@ describe("ProfileCommand", () => {
         route: { current: { name: "home" } },
       });
 
-      await saveProfile("balanced", "global", { api, options, profiles });
+      await saveProfile("balanced", ProfileScope.Global, { api, options, profiles });
 
       expect(options.value.profile).toBe("balanced");
       expect(options.writes).toHaveLength(1);
@@ -700,7 +702,7 @@ describe("ProfileCommand", () => {
       route: { current: { name: "home" } },
     });
 
-    await saveProfile("balanced", "global", { api, options, profiles });
+    await saveProfile("balanced", ProfileScope.Global, { api, options, profiles });
 
     expect(options.value.profile).toBe("balanced");
     expect(options.writes).toHaveLength(1);

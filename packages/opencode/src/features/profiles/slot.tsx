@@ -2,7 +2,7 @@
 
 import type { TuiPluginApi, TuiSlotContext } from "@opencode-ai/plugin/tui";
 
-import { Show, createSignal, onCleanup, onMount } from "solid-js";
+import { Show, createSignal, onCleanup, onMount, type Accessor } from "solid-js";
 
 import type { TuiSlots } from "../../plugin/integrations/types";
 import type { UseForgeOptions } from "../../plugin/options";
@@ -67,7 +67,7 @@ function ProfileSlot({ api, options, theme, sessionID }: Props) {
 
   return (
     <Show when={currentTitle()}>
-      {(title) => (
+      {(title: Accessor<string>) => (
         <text truncate wrapMode="none" style={{ fg: theme.current.primary }} onMouseUp={open}>
           {title()}
         </text>
