@@ -1,10 +1,11 @@
 import type Forge from "@forge/core";
+import type { ForgeUsage } from "@forge/core";
 import type { TuiPluginApi } from "@opencode-ai/plugin/tui";
 
 import { afterEach, beforeEach, describe, expect, jest, test } from "bun:test";
 
-import { startUsageGateDialog } from "../src/features/usage/dialog";
-import { dialogTitle, THRESHOLD_USD, type ForgeUsage } from "../src/features/usage/gate";
+import { startUsageGateDialog } from "../../../src/features/usage/dialog";
+import { dialogTitle, THRESHOLD_USD } from "../../../src/features/usage/gate";
 import { catalog, stub, usage } from "./usage-fixtures";
 
 type Toast = {

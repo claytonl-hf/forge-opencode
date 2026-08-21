@@ -1,4 +1,5 @@
 import type Forge from "@forge/core";
+import type { ForgeUsage } from "@forge/core";
 
 import { describe, expect, test } from "bun:test";
 
@@ -11,9 +12,8 @@ import {
   shouldBlock,
   THRESHOLD_USD,
   type CostTier,
-  type ForgeUsage,
-} from "../src/features/usage/gate";
-import { createUsageSessionHooks } from "../src/features/usage/session";
+} from "../../../src/features/usage/gate";
+import { createUsageSessionHooks } from "../../../src/features/usage/session";
 import { catalog, stub, usage } from "./usage-fixtures";
 
 function forgeWithUsage(snapshot: ForgeUsage | null | undefined) {

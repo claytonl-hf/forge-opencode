@@ -1,8 +1,8 @@
 import type Forge from "@forge/core";
+import type { ForgeUsage } from "@forge/core";
 
 export const THRESHOLD_USD = parseFloat(process.env.FORGE_USAGE_ALERT_BALANCE || "2");
 
-export type ForgeUsage = NonNullable<Awaited<ReturnType<Forge["usage"]>>>;
 export type CostTier = "low" | "mid" | "high";
 
 export const dialogTitle = "You are almost out of Forge credits";

@@ -1,9 +1,9 @@
 import type { Integration } from "../../plugin/integrations/types";
 
-import { configureAgents, type ConfigAgent } from "../../platform/config";
+import { configureAgents, type ConfigAgent, type ConfigProvider } from "../../platform/config";
 
 export const ModelsIntegration: Integration = async (forge, { value: options }) => {
-  const provider = await forge.provider();
+  const [provider, models] = await Promise.all([forge.provider(), forge.models()]);
 
   return {
     server: async () => ({
@@ -15,7 +15,8 @@ export const ModelsIntegration: Integration = async (forge, { value: options }) 
           name: provider.name,
           npm: provider.package,
           api: provider.api.endpoint,
-          models: provider.models,
+          // SAFETY: models is passed through unchanged from forge.models().
+          models: models as ConfigProvider["models"],
           options: {
             baseURL: provider.api.endpoint,
             apiKey: provider.api.key,

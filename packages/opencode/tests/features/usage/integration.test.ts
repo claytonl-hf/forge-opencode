@@ -4,7 +4,7 @@ import { describe, expect, test } from "bun:test";
 
 import { UsageIntegration } from "../../../src/features/usage/integration";
 import { ForgeOptions } from "../../../src/plugin/options";
-import { stub } from "../../../test/usage-fixtures";
+import { stub } from "./usage-fixtures";
 
 type PromptResult = { ok: boolean };
 type Prompt = (...args: object[]) => Promise<PromptResult>;

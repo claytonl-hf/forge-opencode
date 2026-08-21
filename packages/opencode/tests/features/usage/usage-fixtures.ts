@@ -1,8 +1,9 @@
 import type Forge from "@forge/core";
+import type { ForgeUsage } from "@forge/core";
 
-import type { CostTier, ForgeUsage } from "../src/features/usage/gate";
+import type { CostTier } from "../../../src/features/usage/gate";
 
-export type Catalog = Awaited<ReturnType<Forge["models"]>>;
+type Catalog = Awaited<ReturnType<Forge["models"]>>;
 
 export function usage(remainingUsd: number, exhausted = false, resetAt = "2026-08-22T00:00:00Z") {
   // SAFETY: Usage tests only read these budget fields from the otherwise valid Forge usage shape.

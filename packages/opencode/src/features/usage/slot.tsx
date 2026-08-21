@@ -1,13 +1,11 @@
 /** @jsxImportSource @opentui/solid */
 
-import type { Forge } from "@forge/core";
+import type { Forge, ForgeUsage } from "@forge/core";
 import type { TuiPluginApi, TuiSlotContext } from "@opencode-ai/plugin/tui";
 
 import { createSignal, onCleanup, onMount, type ComponentProps } from "solid-js";
 
 import type { TuiSlots } from "../../plugin/integrations/types";
-
-type ForgeUsage = Awaited<ReturnType<Forge["usage"]>>;
 
 type Props = ComponentProps<"box"> &
   TuiSlotContext & {
@@ -18,7 +16,7 @@ type Props = ComponentProps<"box"> &
   };
 
 function Usage({ api, theme, forge, poll, variant, ...props }: Props) {
-  const [usage, setUsage] = createSignal<ForgeUsage>();
+  const [usage, setUsage] = createSignal<ForgeUsage | null | undefined>();
   const balance = () => {
     const value = usage()?.budget.spentCreditsToday ?? 0;
     const total = usage()?.budget.dailyBudgetCredits ?? 0;

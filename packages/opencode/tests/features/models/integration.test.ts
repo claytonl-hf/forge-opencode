@@ -13,7 +13,6 @@ function provider() {
     name: "Forge",
     package: "provider",
     api: { endpoint: "https://broker.test", key: "key", headers: { "X-Title": "Forge" } },
-    models: {},
   };
 }
 
@@ -26,8 +25,12 @@ async function configHook(forge: Forge, value = ForgeDefaultOptions) {
 
 describe("models integration", () => {
   test("installs the provider and enables it without duplication", async () => {
-    const forge = { provider: mock(async () => provider()), agents: mock(async () => ({})) };
-    // SAFETY: this fake implements provider and agents, the only Forge methods used by models.
+    const forge = {
+      provider: mock(async () => provider()),
+      models: mock(async () => ({})),
+      agents: mock(async () => ({})),
+    };
+    // SAFETY: this fake implements the Forge methods used by models integration.
     const hook = await configHook(forge as never);
     const config: Config = {
       provider: { anthropic: { name: "Anthropic", models: {} } },
@@ -40,6 +43,7 @@ describe("models integration", () => {
     expect(config.provider?.forge).toMatchObject({
       name: "Forge",
       npm: "provider",
+      models: {},
       options: { baseURL: "https://broker.test", apiKey: "key" },
     });
     expect(config.enabled_providers).toEqual(["anthropic", "forge"]);
@@ -50,9 +54,13 @@ describe("models integration", () => {
       reviewer: { description: "Forge reviewer", prompt: "Review", model: "forge/default" },
       hidden: { description: "Hidden", prompt: "Hidden" },
     };
-    const forge = { provider: mock(async () => provider()), agents: mock(async () => agents) };
+    const forge = {
+      provider: mock(async () => provider()),
+      models: mock(async () => ({})),
+      agents: mock(async () => agents),
+    };
     const value = ForgeOptions.parse({ agents: ["reviewer"] });
-    // SAFETY: this fake implements provider and agents, the only Forge methods used by models.
+    // SAFETY: this fake implements the Forge methods used by models integration.
     const hook = await configHook(forge as never, value);
     const config: Config = {
       agent: { reviewer: { description: "User reviewer", temperature: 0.1 } },
@@ -71,8 +79,12 @@ describe("models integration", () => {
   });
 
   test("can disable Forge agents", async () => {
-    const forge = { provider: mock(async () => provider()), agents: mock(async () => ({})) };
-    // SAFETY: this fake implements provider and agents, the only Forge methods used by models.
+    const forge = {
+      provider: mock(async () => provider()),
+      models: mock(async () => ({})),
+      agents: mock(async () => ({})),
+    };
+    // SAFETY: this fake implements the Forge methods used by models integration.
     const hook = await configHook(forge as never, ForgeOptions.parse({ agents: false }));
     const config: Config = { agent: { custom: { description: "User" } } };
 

@@ -38,8 +38,9 @@ describe("install", () => {
 
     await install({ location: directory, profiles: true });
 
-    const config: { profiles?: Record<string, (typeof Profiles)[string] | typeof custom> } =
-      parseJSONC(await readFile(join(directory, "forge.jsonc"), "utf-8"));
+    const config: {
+      profiles?: Record<string, (typeof Profiles)[keyof typeof Profiles] | typeof custom>;
+    } = parseJSONC(await readFile(join(directory, "forge.jsonc"), "utf-8"));
     expect(config.profiles).toEqual({ custom, ...Profiles });
     expect(config.profiles).not.toHaveProperty("opus-luna");
   });
