@@ -1,7 +1,7 @@
-import { afterEach, describe, expect, mock, test } from "bun:test";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { afterEach, describe, expect, test, vi } from "vitest";
 
 import { BrandIntegration } from "../../../src/features/brand/integration";
 import { ForgeOptions } from "../../../src/plugin/options";
@@ -18,15 +18,15 @@ async function forge() {
   await writeFile(join(themes, "forge.json"), "{}");
   return {
     themes,
-    opencode: mock(async () => ({ directories: { themes } })),
+    opencode: vi.fn(async () => ({ directories: { themes } })),
   };
 }
 
 describe("brand integration", () => {
   test("owns Forge theme installation and the home logo", async () => {
     const instance = await forge();
-    const install = mock(async () => true);
-    const set = mock(async () => true);
+    const install = vi.fn(async () => true);
+    const set = vi.fn(async () => true);
     const options = { value: ForgeOptions.parse({}) };
     // SAFETY: BrandIntegration only calls forge.opencode and reads options.value during setup.
     const integration = await BrandIntegration(instance as never, options as never);
@@ -35,12 +35,12 @@ describe("brand integration", () => {
 
     expect(install).toHaveBeenCalledWith(join(instance.themes, "forge.json"));
     expect(set).toHaveBeenCalledWith("forge");
-    expect(contribution.slots?.home_logo).toBeFunction();
+    expect(contribution.slots?.home_logo).toBeTypeOf("function");
   });
 
   test("can disable theme and logo independently", async () => {
     const instance = await forge();
-    const install = mock(async () => true);
+    const install = vi.fn(async () => true);
     const options = {
       value: ForgeOptions.parse({ tui: { theme: false, components: { logo: false } } }),
     };

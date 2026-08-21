@@ -19,7 +19,7 @@
   "scripts": {
     "forge": "tsx console/bin.js",
     "prepare": "lefthook install && skills-npm --agents universal --yes",
-    "test": "bun run --filter '*' test",
+    "test": "vitest run",
     "format": "oxfmt --config oxfmt.config.ts",
     "lint": "oxlint"
   },
@@ -38,7 +38,8 @@
     "lefthook": "^2.1.10",
     "oxfmt": "^0.63.0",
     "oxlint": "1.78.0",
-    "skills-npm": "^1.2.0"
+    "skills-npm": "^1.2.0",
+    "vitest": "^4.1.11"
   },
   "peerDependencies": {
     "typescript": "catalog:"

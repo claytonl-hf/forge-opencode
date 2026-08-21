@@ -1,4 +1,4 @@
-import { describe, expect, mock, test } from "bun:test";
+import { describe, expect, test, vi } from "vitest";
 
 import type { Config } from "../../../src/platform/config";
 
@@ -21,7 +21,7 @@ describe("migration integration", () => {
   });
 
   test("runs the persistent migration when the server connects", async () => {
-    const run = mock(async () => {});
+    const run = vi.fn(async () => {});
     const hooks = migrationHooks(run);
 
     // SAFETY: the migration event hook only inspects event.type.

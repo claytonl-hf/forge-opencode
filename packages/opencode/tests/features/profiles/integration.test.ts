@@ -1,7 +1,7 @@
 import type Forge from "@forge/core";
 import type { Config } from "@opencode-ai/plugin";
 
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "vitest";
 
 import { ProfileIntegration } from "../../../src/features/profiles/integration";
 import { ForgeOptions, type UseForgeOptions } from "../../../src/plugin/options";
@@ -22,8 +22,8 @@ describe("profile integration", () => {
     } as never);
 
     expect(contribution.commands?.map(({ name }) => name)).toEqual(["forge:profile"]);
-    expect(contribution.slots?.session_prompt_right).toBeFunction();
-    expect(contribution.slots?.home_prompt_right).toBeFunction();
+    expect(contribution.slots?.session_prompt_right).toBeTypeOf("function");
+    expect(contribution.slots?.home_prompt_right).toBeTypeOf("function");
   });
 
   test("keeps the profile command but omits the slot when disabled", async () => {

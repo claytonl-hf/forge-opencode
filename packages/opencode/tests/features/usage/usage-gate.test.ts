@@ -1,7 +1,7 @@
 import type Forge from "@forge/core";
 import type { ForgeUsage } from "@forge/core";
 
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "vitest";
 
 import {
   blockMessage,
@@ -101,7 +101,9 @@ describe("usage gate", () => {
           { model: { providerID: "forge", modelID: "low-model" } } as never,
           { message: { model: { providerID: "forge", modelID } } } as never,
         ),
-      ).rejects.toThrow(blockMessage(usage(THRESHOLD_USD)));
+      ).rejects.toThrow(
+        "Forge daily balance is $2.00, at or below the $2.00 threshold. Forge would silently route this request to a floor model. Reset at 2026-08-22T00:00:00Z.",
+      );
     },
   );
 
@@ -115,7 +117,9 @@ describe("usage gate", () => {
         { model: { providerID: "forge", id: "forge/high-model" } } as never,
         {} as never,
       ),
-    ).rejects.toThrow(blockMessage(usage(THRESHOLD_USD)));
+    ).rejects.toThrow(
+      "Forge daily balance is $2.00, at or below the $2.00 threshold. Forge would silently route this request to a floor model. Reset at 2026-08-22T00:00:00Z.",
+    );
   });
 
   test("chat.message prefers output.message.model over input.model", async () => {
@@ -131,7 +135,9 @@ describe("usage gate", () => {
         { model: { providerID: "forge", modelID: "input-model" } } as never,
         { message: { model: { providerID: "forge", modelID: "output-model" } } } as never,
       ),
-    ).rejects.toThrow(blockMessage(usage(THRESHOLD_USD)));
+    ).rejects.toThrow(
+      "Forge daily balance is $2.00, at or below the $2.00 threshold. Forge would silently route this request to a floor model. Reset at 2026-08-22T00:00:00Z.",
+    );
   });
 
   test("does not throw for a blocked low-tier target", async () => {

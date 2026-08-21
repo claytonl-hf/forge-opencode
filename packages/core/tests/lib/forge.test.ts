@@ -1,10 +1,10 @@
 import type { ForgeEnvironment } from "@forge/core";
 
-import { afterAll, afterEach, beforeAll, describe, expect, test } from "bun:test";
-import { mkdir, mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { createServer, type IncomingHttpHeaders } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { afterAll, afterEach, beforeAll, describe, expect, test } from "vitest";
 import { z } from "zod";
 
 import { ForgeNotReady } from "../../src/lib/errors";
@@ -337,7 +337,7 @@ describe("Forge OpenCode resources", () => {
         mkdir(join(bootstrap, name)),
       ),
     );
-    await Bun.write(
+    await writeFile(
       join(bootstrap, "opencode-agents", "reviewer.md"),
       "---\ndescription: Reviews code\n---\nReview.\n",
     );

@@ -1,6 +1,6 @@
 import type Forge from "@forge/core";
 
-import { describe, expect, mock, test } from "bun:test";
+import { describe, expect, test, vi } from "vitest";
 
 import type { Config } from "../../../src/platform/config";
 
@@ -26,9 +26,9 @@ async function configHook(forge: Forge, value = ForgeDefaultOptions) {
 describe("models integration", () => {
   test("installs the provider and enables it without duplication", async () => {
     const forge = {
-      provider: mock(async () => provider()),
-      models: mock(async () => ({})),
-      agents: mock(async () => ({})),
+      provider: vi.fn(async () => provider()),
+      models: vi.fn(async () => ({})),
+      agents: vi.fn(async () => ({})),
     };
     // SAFETY: this fake implements the Forge methods used by models integration.
     const hook = await configHook(forge as never);
@@ -55,9 +55,9 @@ describe("models integration", () => {
       hidden: { description: "Hidden", prompt: "Hidden" },
     };
     const forge = {
-      provider: mock(async () => provider()),
-      models: mock(async () => ({})),
-      agents: mock(async () => agents),
+      provider: vi.fn(async () => provider()),
+      models: vi.fn(async () => ({})),
+      agents: vi.fn(async () => agents),
     };
     const value = ForgeOptions.parse({ agents: ["reviewer"] });
     // SAFETY: this fake implements the Forge methods used by models integration.
@@ -80,9 +80,9 @@ describe("models integration", () => {
 
   test("can disable Forge agents", async () => {
     const forge = {
-      provider: mock(async () => provider()),
-      models: mock(async () => ({})),
-      agents: mock(async () => ({})),
+      provider: vi.fn(async () => provider()),
+      models: vi.fn(async () => ({})),
+      agents: vi.fn(async () => ({})),
     };
     // SAFETY: this fake implements the Forge methods used by models integration.
     const hook = await configHook(forge as never, ForgeOptions.parse({ agents: false }));

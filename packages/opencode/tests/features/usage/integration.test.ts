@@ -1,6 +1,6 @@
 import type { TuiPluginApi } from "@opencode-ai/plugin/tui";
 
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "vitest";
 
 import { UsageIntegration } from "../../../src/features/usage/integration";
 import { ForgeOptions } from "../../../src/plugin/options";
@@ -20,8 +20,8 @@ describe("usage integration", () => {
     const contribution = await integration.tui!(tui.api);
 
     expect(models.calls).toHaveLength(1);
-    expect(contribution.slots?.home_bottom).toBeFunction();
-    expect(contribution.slots?.sidebar_content).toBeArrayOfSize(1);
+    expect(contribution.slots?.home_bottom).toBeTypeOf("function");
+    expect(contribution.slots?.sidebar_content).toHaveLength(1);
   });
 
   test("does not throw and contributes no slots when usage is disabled", async () => {

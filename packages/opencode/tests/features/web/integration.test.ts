@@ -1,11 +1,11 @@
-import { describe, expect, mock, test } from "bun:test";
+import { describe, expect, test, vi } from "vitest";
 
 import { WebIntegration } from "../../../src/features/web/integration";
 import { ForgeOptions } from "../../../src/plugin/options";
 
 function forge() {
   return {
-    opencode: mock(async () => ({
+    opencode: vi.fn(async () => ({
       bridge: { web: { file: "/tmp/web-bridge", url: "http://localhost:4096" } },
     })),
   };
@@ -21,7 +21,7 @@ describe("web integration", () => {
     const contribution = await integration.tui!({} as never);
 
     expect(contribution.commands?.map(({ name }) => name)).toEqual(["forge:web"]);
-    expect(contribution.slots?.sidebar_content).toBeArrayOfSize(1);
+    expect(contribution.slots?.sidebar_content).toHaveLength(1);
     expect(instance.opencode).toHaveBeenCalledTimes(1);
   });
 

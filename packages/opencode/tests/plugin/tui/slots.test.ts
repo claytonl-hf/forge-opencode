@@ -1,4 +1,4 @@
-import { describe, expect, mock, test } from "bun:test";
+import { describe, expect, test, vi } from "vitest";
 
 import { registerSlots } from "../../../src/plugin/tui/slots";
 
@@ -6,7 +6,7 @@ describe("registerSlots", () => {
   test("positions sidebar content below LSP", () => {
     // SAFETY: render output is opaque to this test; only slot ordering and identity are asserted.
     const workers = () => "workers" as never;
-    const register = mock(() => "slot");
+    const register = vi.fn(() => "slot");
 
     // SAFETY: this focused API fake implements slots.register, the only operation under test.
     registerSlots({ slots: { register } } as never, [{ sidebar_content: workers }]);
@@ -18,7 +18,7 @@ describe("registerSlots", () => {
   });
 
   test("does not create a Forge section for empty line contributions", () => {
-    const register = mock(() => "slot");
+    const register = vi.fn(() => "slot");
 
     // SAFETY: this focused API fake implements slots.register, the only operation under test.
     registerSlots({ slots: { register } } as never, [{ sidebar_content: [] }]);

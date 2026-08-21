@@ -1,6 +1,6 @@
 import type Forge from "@forge/core";
 
-import { describe, expect, mock, test } from "bun:test";
+import { describe, expect, test, vi } from "vitest";
 
 import type { Config } from "../../../src/platform/config";
 
@@ -16,8 +16,8 @@ async function configHook(forge: Forge) {
 describe("tools integration", () => {
   test("installs Forge MCP, commands, and skills while preserving user configuration", async () => {
     const forge = {
-      mcp: mock(async () => ({ type: "remote", url: "https://mcp.test" })),
-      commands: mock(async () => ({ review: { description: "Review", template: "Review" } })),
+      mcp: vi.fn(async () => ({ type: "remote", url: "https://mcp.test" })),
+      commands: vi.fn(async () => ({ review: { description: "Review", template: "Review" } })),
     };
     // SAFETY: this fake implements mcp and commands, the only Forge methods used by tools.
     const hook = await configHook(forge as never);
@@ -32,13 +32,13 @@ describe("tools integration", () => {
     expect(config.mcp).toMatchObject({ forge: { url: "https://mcp.test" }, other: {} });
     expect(config.command).toMatchObject({ custom: {}, review: {} });
     expect(config.skills?.paths?.[0]).toBe("/custom/skills");
-    expect(config.skills?.paths?.at(-1)).toEndWith("/resources/skills");
+    expect(config.skills?.paths?.at(-1)).toMatch(/\/resources\/skills$/);
   });
 
   test("tolerates unavailable Forge commands", async () => {
     const forge = {
-      mcp: mock(async () => undefined),
-      commands: mock(async () => {
+      mcp: vi.fn(async () => undefined),
+      commands: vi.fn(async () => {
         throw new Error("unavailable");
       }),
     };

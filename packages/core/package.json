@@ -12,7 +12,7 @@
     }
   },
   "scripts": {
-    "test": "bun test"
+    "test": "vitest run"
   },
   "dependencies": {
     "@opencode-ai/models": "^0.0.50",

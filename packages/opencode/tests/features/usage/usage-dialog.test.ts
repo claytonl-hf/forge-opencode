@@ -2,7 +2,7 @@ import type Forge from "@forge/core";
 import type { ForgeUsage } from "@forge/core";
 import type { TuiPluginApi } from "@opencode-ai/plugin/tui";
 
-import { afterEach, beforeEach, describe, expect, jest, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { startUsageGateDialog } from "../../../src/features/usage/dialog";
 import { dialogTitle, THRESHOLD_USD } from "../../../src/features/usage/gate";
@@ -165,11 +165,11 @@ function expectNoDialogs(tui: ReturnType<typeof createTui>) {
 
 describe("usage gate dialogs", () => {
   beforeEach(() => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
   });
 
   afterEach(() => {
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   test("shows a DialogAlert for a blocked Forge mid-tier rejected prompt", async () => {
@@ -193,7 +193,7 @@ describe("usage gate dialogs", () => {
 
     expect(tui.toasts).toHaveLength(0);
     expect(tui.dialogReplace).toHaveLength(0);
-    jest.advanceTimersByTime(0);
+    vi.advanceTimersByTime(0);
 
     expect(tui.dialogAlert[0]?.[0]).toEqual({
       title: dialogTitle,
@@ -219,7 +219,7 @@ describe("usage gate dialogs", () => {
 
     await sessionPrompt(tui);
     await settle();
-    jest.advanceTimersByTime(0);
+    vi.advanceTimersByTime(0);
 
     expectNoDialogs(tui);
     expect(tui.toasts).toHaveLength(0);
@@ -236,7 +236,7 @@ describe("usage gate dialogs", () => {
 
     await sessionPrompt(tui);
     await settle();
-    jest.advanceTimersByTime(0);
+    vi.advanceTimersByTime(0);
 
     expectNoDialogs(tui);
     expect(tui.toasts).toHaveLength(0);
@@ -261,7 +261,7 @@ describe("usage gate dialogs", () => {
 
     await sessionPrompt(tui);
     await settle();
-    jest.advanceTimersByTime(0);
+    vi.advanceTimersByTime(0);
 
     expectNoDialogs(tui);
     expect(tui.interrupted).toEqual(["child"]);
@@ -279,7 +279,7 @@ describe("usage gate dialogs", () => {
     expect(result).toBe(returned);
     await result;
     await settle();
-    jest.advanceTimersByTime(0);
+    vi.advanceTimersByTime(0);
 
     expectNoDialogs(tui);
     expect(tui.v2SessionPrompt).toHaveLength(1);
@@ -305,7 +305,7 @@ describe("usage gate dialogs", () => {
 
     await sessionPrompt(tui);
     await settle();
-    jest.advanceTimersByTime(0);
+    vi.advanceTimersByTime(0);
 
     expectNoDialogs(tui);
     expect(tui.interrupted).toHaveLength(0);
@@ -331,7 +331,7 @@ describe("usage gate dialogs", () => {
     expect(tui.client.v2.session.prompt).toBe(originalV2Prompt);
     expect(tui.dialogClear).toHaveLength(1);
 
-    jest.advanceTimersByTime(0);
+    vi.advanceTimersByTime(0);
     expectNoDialogs(tui);
   });
 });

@@ -1,7 +1,7 @@
-import { afterEach, describe, expect, mock, test } from "bun:test";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { afterEach, describe, expect, test, vi } from "vitest";
 
 import {
   emitIdleEvent,
@@ -53,27 +53,27 @@ describe("done notifier integration", () => {
 
   test("registers for idle events and unsubscribes when the TUI is disposed", async () => {
     const bridgeFile = await temporaryBridge();
-    const unsubscribe = mock(() => {});
+    const unsubscribe = vi.fn(() => {});
     let idleHandler: ((event: { properties: { sessionID: string } }) => void) | undefined;
     let dispose: (() => void) | undefined;
     const api = {
       event: {
-        on: mock((_type: string, handler: typeof idleHandler) => {
+        on: vi.fn((_type: string, handler: typeof idleHandler) => {
           idleHandler = handler;
           return unsubscribe;
         }),
       },
       lifecycle: {
-        onDispose: mock((handler: () => void) => {
+        onDispose: vi.fn((handler: () => void) => {
           dispose = handler;
           return () => {};
         }),
       },
-      renderer: { on: mock(() => {}), off: mock(() => {}) },
+      renderer: { on: vi.fn(() => {}), off: vi.fn(() => {}) },
       route: { current: { name: "home" } },
-      state: { session: { get: mock((id: string) => session(id)) } },
+      state: { session: { get: vi.fn((id: string) => session(id)) } },
     };
-    const forge = { opencode: mock(async () => ({ bridge: { notifier: bridgeFile } })) };
+    const forge = { opencode: vi.fn(async () => ({ bridge: { notifier: bridgeFile } })) };
     const options = { value: { tui: { notify: true } } };
 
     // SAFETY: the focused fakes provide the Forge and option values used by the notifier.
@@ -92,24 +92,26 @@ describe("done notifier integration", () => {
 
   test("skips the visibly focused session and resumes after blur", async () => {
     const bridgeFile = await temporaryBridge();
+    await mkdir(dirname(bridgeFile), { recursive: true });
+    await writeFile(bridgeFile, "");
     let idleHandler: ((event: { properties: { sessionID: string } }) => void) | undefined;
     const rendererHandlers = new Map<string, () => void>();
     const api = {
       event: {
-        on: mock((_type: string, handler: typeof idleHandler) => {
+        on: vi.fn((_type: string, handler: typeof idleHandler) => {
           idleHandler = handler;
           return () => {};
         }),
       },
-      lifecycle: { onDispose: mock(() => () => {}) },
+      lifecycle: { onDispose: vi.fn(() => () => {}) },
       renderer: {
-        on: mock((event: string, handler: () => void) => rendererHandlers.set(event, handler)),
-        off: mock(() => {}),
+        on: vi.fn((event: string, handler: () => void) => rendererHandlers.set(event, handler)),
+        off: vi.fn(() => {}),
       },
       route: { current: { name: "session", params: { sessionID: "session-5" } } },
-      state: { session: { get: mock((id: string) => session(id)) } },
+      state: { session: { get: vi.fn((id: string) => session(id)) } },
     };
-    const forge = { opencode: mock(async () => ({ bridge: { notifier: bridgeFile } })) };
+    const forge = { opencode: vi.fn(async () => ({ bridge: { notifier: bridgeFile } })) };
     const options = { value: { tui: { notify: true } } };
 
     // SAFETY: these focused fakes implement only the Forge, options, and TUI APIs used here.
@@ -119,7 +121,8 @@ describe("done notifier integration", () => {
 
     rendererHandlers.get("focus")?.();
     idleHandler?.({ properties: { sessionID: "session-5" } });
-    expect(Bun.file(bridgeFile).size).toBe(0);
+    const stats = await stat(bridgeFile);
+    expect(stats.size).toBe(0);
 
     rendererHandlers.get("blur")?.();
     idleHandler?.({ properties: { sessionID: "session-5" } });
@@ -129,7 +132,7 @@ describe("done notifier integration", () => {
   });
 
   test("does not register the notifier when disabled", async () => {
-    const forge = { opencode: mock(async () => ({ bridge: { notifier: "/tmp/notifier" } })) };
+    const forge = { opencode: vi.fn(async () => ({ bridge: { notifier: "/tmp/notifier" } })) };
     // SAFETY: disabled setup reads only the supplied tui.notify option and no TUI API members.
     const integration = await NotifierIntegration(
       forge as never,
@@ -145,11 +148,11 @@ describe("done notifier integration", () => {
     const previous = process.env.FORGE_OPENCODE_NOTIFY;
     process.env.FORGE_OPENCODE_NOTIFY = "1";
     try {
-      const forge = { opencode: mock(async () => ({ bridge: { notifier: "/tmp/notifier" } })) };
+      const forge = { opencode: vi.fn(async () => ({ bridge: { notifier: "/tmp/notifier" } })) };
       const api = {
-        event: { on: mock(() => () => {}) },
-        lifecycle: { onDispose: mock(() => () => {}) },
-        renderer: { on: mock(() => {}), off: mock(() => {}) },
+        event: { on: vi.fn(() => () => {}) },
+        lifecycle: { onDispose: vi.fn(() => () => {}) },
+        renderer: { on: vi.fn(() => {}), off: vi.fn(() => {}) },
       };
       // SAFETY: the focused fakes implement every Forge, option, and TUI API used during setup.
       const integration = await NotifierIntegration(

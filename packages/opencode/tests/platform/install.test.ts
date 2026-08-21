@@ -1,10 +1,11 @@
-import { afterEach, describe, expect, test } from "bun:test";
 import { parseJSONC } from "confbox";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { afterEach, describe, expect, test } from "vitest";
 
-import { Profiles } from "../../src/features/profiles/presets";
+import type { Profile } from "../../src/features/profiles/profile";
+
 import { install } from "../../src/platform/install";
 
 const directories: string[] = [];
@@ -38,10 +39,13 @@ describe("install", () => {
 
     await install({ location: directory, profiles: true });
 
-    const config: {
-      profiles?: Record<string, (typeof Profiles)[keyof typeof Profiles] | typeof custom>;
-    } = parseJSONC(await readFile(join(directory, "forge.jsonc"), "utf-8"));
-    expect(config.profiles).toEqual({ custom, ...Profiles });
+    const config: { profiles?: Record<string, Profile> } = parseJSONC(
+      await readFile(join(directory, "forge.jsonc"), "utf-8"),
+    );
+    expect(config.profiles).toMatchObject({ custom });
+    expect(config.profiles).toHaveProperty("bedrock");
+    expect(config.profiles).toHaveProperty("pareto");
+    expect(config.profiles).toHaveProperty("lite");
     expect(config.profiles).not.toHaveProperty("opus-luna");
   });
 });

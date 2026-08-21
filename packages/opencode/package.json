@@ -1,6 +1,5 @@
 {
   "name": "@forge/opencode",
-  "bin": "",
   "type": "module",
   "exports": {
     "./config": {
@@ -25,7 +24,7 @@
     }
   },
   "scripts": {
-    "test": "bun test"
+    "test": "vitest run"
   },
   "dependencies": {
     "@forge/core": "workspace:*",

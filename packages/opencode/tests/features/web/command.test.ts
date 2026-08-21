@@ -1,10 +1,10 @@
-import { describe, expect, mock, test } from "bun:test";
+import { describe, expect, test, vi } from "vitest";
 
 import { WebCommand } from "../../../src/features/web/command";
 
 describe("/forge:web command", () => {
   test("requires an active session", () => {
-    const toast = mock(() => {});
+    const toast = vi.fn(() => {});
     const api = { route: { current: { name: "home" } }, ui: { toast } };
     // SAFETY: the home-route branch only reads route.current and ui.toast.
     const command = WebCommand(api as never, "/tmp/web-bridge");
