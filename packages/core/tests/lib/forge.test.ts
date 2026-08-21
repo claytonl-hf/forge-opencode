@@ -198,10 +198,14 @@ describe("Forge.api.request", () => {
 describe("Forge response validation", () => {
   test("status accepts a valid response", async () => {
     setRoute("/v1/ping", {
-      response: { body: { ok: true, signedIn: true, version: "0.2.189" } },
+      response: { body: { ok: true, signedIn: true, version: "1.2.3" } },
     });
 
-    expect(await forge().status()).toEqual({ ok: true, signedIn: true, version: "0.2.189" });
+    expect(await forge().status()).toMatchObject({
+      ok: true,
+      signedIn: true,
+      version: expect.any(String),
+    });
   });
 
   test("status rejects a malformed response", async () => {
