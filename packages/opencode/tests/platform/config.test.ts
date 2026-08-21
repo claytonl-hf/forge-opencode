@@ -3,13 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, test } from "vitest";
 
-import {
-  configureAgents,
-  configurePlugins,
-  patch,
-  resolve,
-  update,
-} from "../../src/platform/config";
+import { configureAgents, configurePlugins, patch, resolve, update } from "#platform/config";
 
 const directories: string[] = [];
 

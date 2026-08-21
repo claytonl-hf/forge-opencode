@@ -1,8 +1,11 @@
-import type { Integration } from "../../plugin/integrations/types";
+import type { Integration } from "#plugin/integrations/types";
 
-import { configureAgents, type ConfigAgent, type ConfigProvider } from "../../platform/config";
+import { configureAgents, type ConfigAgent } from "#platform/config";
 
-export const ModelsIntegration: Integration = async (forge, { value: options }) => {
+export async function ModelsIntegration(
+  forge: Parameters<Integration>[0],
+  { value: options }: Parameters<Integration>[1],
+): ReturnType<Integration> {
   const [provider, models] = await Promise.all([forge.provider(), forge.models()]);
 
   return {
@@ -15,8 +18,16 @@ export const ModelsIntegration: Integration = async (forge, { value: options }) 
           name: provider.name,
           npm: provider.package,
           api: provider.api.endpoint,
-          // SAFETY: models is passed through unchanged from forge.models().
-          models: models as ConfigProvider["models"],
+          models: Object.fromEntries(
+            Object.entries(models).map(([id, model]) => [
+              id,
+              {
+                ...model,
+                experimental: Boolean(model.experimental),
+                provider: model.provider?.npm ? { npm: model.provider.npm } : undefined,
+              },
+            ]),
+          ),
           options: {
             baseURL: provider.api.endpoint,
             apiKey: provider.api.key,
@@ -40,13 +51,10 @@ export const ModelsIntegration: Integration = async (forge, { value: options }) 
                 .then((agents) => {
                   if (!Array.isArray(options.agents)) return agents;
 
-                  for (const name in agents) {
-                    if (!options.agents.includes(name)) {
-                      // SAFETY: name is produced by enumerating agents itself.
-                      delete agents[name as keyof typeof agents];
-                    }
-                  }
-                  return agents;
+                  const selectedAgents = options.agents;
+                  return Object.fromEntries(
+                    Object.entries(agents).filter(([name]) => selectedAgents.includes(name)),
+                  );
                 });
         const fromUser = Object.fromEntries(
           Object.entries(config.agent ?? {}).filter(
@@ -58,4 +66,4 @@ export const ModelsIntegration: Integration = async (forge, { value: options }) 
       },
     }),
   };
-};
+}

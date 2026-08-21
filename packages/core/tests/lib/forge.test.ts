@@ -7,9 +7,9 @@ import { join } from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, test } from "vitest";
 import { z } from "zod";
 
-import { ForgeNotReady } from "../../src/lib/errors";
-import { Forge } from "../../src/lib/forge";
-import { Store, store } from "../../src/lib/store";
+import { ForgeNotReady } from "#lib/errors";
+import { Forge } from "#lib/forge";
+import { Store, store } from "#lib/store";
 
 type RouteResponse = { body: unknown; status?: number };
 type Route =

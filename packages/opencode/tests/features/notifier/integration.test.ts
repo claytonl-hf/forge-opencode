@@ -7,7 +7,7 @@ import {
   emitIdleEvent,
   NotifierIntegration,
   type DoneNotifierPayload,
-} from "../../../src/features/notifier/integration";
+} from "#features/notifier/integration";
 
 const temporaryDirectories: string[] = [];
 

@@ -4,8 +4,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, test } from "vitest";
 
-import { ForgeNotRunning } from "../../src/lib/errors";
-import { handshake } from "../../src/lib/handshake";
+import { ForgeNotRunning } from "#lib/errors";
+import { handshake } from "#lib/handshake";
 
 const directories: string[] = [];
 

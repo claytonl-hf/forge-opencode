@@ -3,8 +3,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
-import { BrandIntegration } from "../../../src/features/brand/integration";
-import { ForgeOptions } from "../../../src/plugin/options";
+import { BrandIntegration } from "#features/brand/integration";
+import { ForgeOptions } from "#plugin/options";
 
 const temporaryDirectories: string[] = [];
 

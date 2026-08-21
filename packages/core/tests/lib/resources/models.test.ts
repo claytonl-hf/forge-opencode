@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { getModels } from "../../../src/lib/resources/models";
+import { getModels } from "#lib/resources/models";
 
 function model() {
   return {

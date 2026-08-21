@@ -5,7 +5,7 @@ import { basename } from "node:path";
 
 export async function list<T>(
   path: string,
-  mapper: (data: ReturnType<typeof matter>["data"], content: string) => T,
+  mapper: (metadata: ReturnType<typeof matter>["data"], content: string) => T,
 ): Promise<Record<string, T>> {
   const files = await glob("*.md", { cwd: path, absolute: true });
   const output: Record<string, T> = {};
@@ -15,9 +15,9 @@ export async function list<T>(
       try {
         const name = basename(file, ".md");
         const contents = await readFile(file, "utf-8");
-        const { data, content } = matter(contents);
+        const { data: metadata, content } = matter(contents);
 
-        output[name] = mapper(data, content);
+        output[name] = mapper(metadata, content);
       } catch {
         // Do not block if a file is malformed
       }

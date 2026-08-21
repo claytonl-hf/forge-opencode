@@ -1,7 +1,7 @@
 import type { TuiHostSlotMap, TuiPluginApi, TuiSlotPlugin } from "@opencode-ai/plugin/tui";
 
-import type { TuiSlots } from "../integrations/types";
-import type { ForgeOptions, UseForgeOptions } from "../options";
+import type { TuiSlots } from "#plugin/integrations/types";
+import type { ForgeOptions, UseForgeOptions } from "#plugin/options";
 
 import { createSidebar, sidebarPlugin } from "./sidebar";
 

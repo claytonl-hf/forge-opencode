@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 
-import { createForge } from "../src/index";
+import { createForge } from "#index";
 
 const LIVE_TEST_TIMEOUT = 30_000;
 

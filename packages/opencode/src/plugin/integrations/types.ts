@@ -9,7 +9,7 @@ import type {
 } from "@opencode-ai/plugin/tui";
 import type { Command } from "@opentui/keymap";
 
-import type { UseForgeOptions } from "../options";
+import type { UseForgeOptions } from "#plugin/options";
 
 export type TuiCommand = Command<Renderable, KeyEvent>;
 export type TuiSlot<Name extends keyof TuiHostSlotMap> = NonNullable<TuiSlotPlugin["slots"][Name]>;

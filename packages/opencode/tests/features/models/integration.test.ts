@@ -2,10 +2,10 @@ import type Forge from "@forge/core";
 
 import { describe, expect, test, vi } from "vitest";
 
-import type { Config } from "../../../src/platform/config";
+import type { Config } from "#platform/config";
 
-import { ModelsIntegration } from "../../../src/features/models/integration";
-import { ForgeDefaultOptions, ForgeOptions } from "../../../src/plugin/options";
+import { ModelsIntegration } from "#features/models/integration";
+import { ForgeDefaultOptions, ForgeOptions } from "#plugin/options";
 
 function provider() {
   return {

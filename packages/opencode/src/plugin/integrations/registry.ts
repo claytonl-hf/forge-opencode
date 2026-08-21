@@ -2,19 +2,20 @@ import type Forge from "@forge/core";
 import type { Hooks, PluginInput } from "@opencode-ai/plugin";
 import type { TuiPluginApi } from "@opencode-ai/plugin/tui";
 
-import type { UseForgeOptions } from "../options";
-import type { TuiOutput } from "./types";
+import type { UseForgeOptions } from "#plugin/options";
 
-import { BrandIntegration } from "../../features/brand/integration";
-import { MigrationIntegration } from "../../features/migration/integration";
-import { ModelsIntegration } from "../../features/models/integration";
-import { NotifierIntegration } from "../../features/notifier/integration";
-import { ProfileIntegration } from "../../features/profiles/integration";
-import { ToolsIntegration } from "../../features/tools/integration";
-import { UsageIntegration } from "../../features/usage/integration";
-import { WebIntegration } from "../../features/web/integration";
-import { WorkerIntegration } from "../../features/workers/integration";
-import { createHooks } from "../server/hooks";
+import { BrandIntegration } from "#features/brand/integration";
+import { MigrationIntegration } from "#features/migration/integration";
+import { ModelsIntegration } from "#features/models/integration";
+import { NotifierIntegration } from "#features/notifier/integration";
+import { ProfileIntegration } from "#features/profiles/integration";
+import { ToolsIntegration } from "#features/tools/integration";
+import { UsageIntegration } from "#features/usage/integration";
+import { WebIntegration } from "#features/web/integration";
+import { WorkerIntegration } from "#features/workers/integration";
+import { createHooks } from "#plugin/server/hooks";
+
+import type { TuiOutput } from "./types";
 
 export async function useIntegrations(forge: Forge, options: UseForgeOptions) {
   const integrations = await Promise.all([

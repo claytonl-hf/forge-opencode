@@ -1,8 +1,8 @@
 import type { Hooks } from "@opencode-ai/plugin";
 
-import type { Integration } from "../../plugin/integrations/types";
+import type { Integration } from "#plugin/integrations/types";
 
-import { deforge, deforgeTuiPlugins, migrate } from "../../platform/migrate";
+import { deforge, deforgeTuiPlugins, migrate } from "#platform/migrate";
 
 type MigrationRunner = () => Promise<void>;
 

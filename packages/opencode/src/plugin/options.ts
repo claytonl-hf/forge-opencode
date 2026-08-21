@@ -3,8 +3,8 @@ import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
 
-import { Profile } from "../features/profiles/profile";
-import { ConfigDirectories, resolve } from "../platform/config";
+import { Profile } from "#features/profiles/profile";
+import { ConfigDirectories, resolve } from "#platform/config";
 
 const ForgeTuiComponents = z
   .object({

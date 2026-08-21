@@ -1,8 +1,8 @@
 import { join } from "node:path";
 
-import type { Integration } from "../../plugin/integrations/types";
+import type { Integration } from "#plugin/integrations/types";
 
-import { PackageRoot, type Config } from "../../platform/config";
+import { PackageRoot, type Config } from "#platform/config";
 
 export const ToolsIntegration: Integration = async (forge) => {
   const mcp = await forge.mcp();

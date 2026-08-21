@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, test } from "vitest";
 
-import { ForgeDefaultOptions, ForgeOptions, useForgeOptions } from "../../src/plugin/options";
+import { ForgeDefaultOptions, ForgeOptions, useForgeOptions } from "#plugin/options";
 
 const directories: string[] = [];
 

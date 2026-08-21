@@ -4,7 +4,8 @@ import type { Command } from "@opentui/keymap";
 
 import { createSignal } from "solid-js";
 
-import type { UseForgeOptions } from "../../plugin/options";
+import type { UseForgeOptions } from "#plugin/options";
+
 import type { Profile } from "./profile";
 
 import { clearPendingProfile, writePendingProfile } from "./pending";

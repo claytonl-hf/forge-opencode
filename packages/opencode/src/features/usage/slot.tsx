@@ -5,7 +5,7 @@ import type { TuiPluginApi, TuiSlotContext } from "@opencode-ai/plugin/tui";
 
 import { createSignal, onCleanup, onMount, type ComponentProps } from "solid-js";
 
-import type { TuiSlots } from "../../plugin/integrations/types";
+import type { TuiSlots } from "#plugin/integrations/types";
 
 type Props = ComponentProps<"box"> &
   TuiSlotContext & {

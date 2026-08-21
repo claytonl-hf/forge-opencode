@@ -22,6 +22,8 @@ export type WorkerState<Session extends WorkerSession = WorkerSession> = {
   updatedAt: number;
 };
 
+type WorkerProgress = Pick<WorkerState, "status" | "progress">;
+
 function displaySessionTitle(session: WorkerSession) {
   const title = session.title?.trim() || "Untitled session";
   return title.replace(/\s+\(@[^()]+ subagent\)$/, "");
@@ -43,24 +45,21 @@ export function deriveWorkerState<Session extends WorkerSession>(
     todos.length > 0 &&
     todos.every((todo) => todo.status === "completed" || todo.status === "cancelled");
 
-  let status: WorkerStatus;
-  let progress: string;
-  if (nativeStatus === "busy") {
-    status = "working";
-    progress = active?.content ?? pending?.content ?? "Working…";
-  } else if (nativeStatus === "retry") {
-    status = "retrying";
-    progress = active?.content ?? pending?.content ?? "Retrying…";
-  } else if (allClosed) {
-    status = "done";
-    progress = "Done";
-  } else if (todos.length > 0) {
-    status = "idle";
-    progress = active?.content ?? pending?.content ?? "Work unfinished";
-  } else {
-    status = "inactive";
-    progress = sessionTitle;
-  }
+  const { status, progress } = ((): WorkerProgress => {
+    if (nativeStatus === "busy") {
+      return { status: "working", progress: active?.content ?? pending?.content ?? "Working…" };
+    }
+    if (nativeStatus === "retry") {
+      return { status: "retrying", progress: active?.content ?? pending?.content ?? "Retrying…" };
+    }
+    if (allClosed) {
+      return { status: "done", progress: "Done" };
+    }
+    if (todos.length > 0) {
+      return { status: "idle", progress: active?.content ?? pending?.content ?? "Work unfinished" };
+    }
+    return { status: "inactive", progress: sessionTitle };
+  })();
 
   return {
     session,

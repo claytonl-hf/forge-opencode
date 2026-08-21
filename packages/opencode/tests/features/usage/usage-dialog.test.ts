@@ -4,8 +4,9 @@ import type { TuiPluginApi } from "@opencode-ai/plugin/tui";
 
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
-import { startUsageGateDialog } from "../../../src/features/usage/dialog";
-import { dialogTitle, THRESHOLD_USD } from "../../../src/features/usage/gate";
+import { startUsageGateDialog } from "#features/usage/dialog";
+import { dialogTitle, THRESHOLD_USD } from "#features/usage/gate";
+
 import { catalog, stub, usage } from "./usage-fixtures";
 
 type Toast = {

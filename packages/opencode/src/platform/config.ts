@@ -51,13 +51,9 @@ export function configureAgents(
 
   for (const input of inputs) {
     for (const [name, patch] of Object.entries(input)) {
-      // SAFETY: an empty agent is valid while successive configuration patches populate it.
-      const agent = (agents[name] ??= {} as ConfigAgent);
+      const agent = (agents[name] ??= {});
 
-      // SAFETY: Object.keys erases keys from the typed partial ConfigAgent patch.
-      for (const key of Object.keys(patch) as Array<keyof ConfigAgent>) {
-        const value = patch[key];
-
+      for (const [key, value] of Object.entries(patch)) {
         if (value === null) {
           delete agent[key];
         } else if (value !== undefined) {
@@ -201,9 +197,8 @@ export async function patch<T extends object = Config>(
   }
 
   // SAFETY: the configured parser owns T; a newly created configuration starts as an empty T.
-  const input = config.parse ? config.parse(await readFile(config.path, "utf-8")) : ({} as T);
-  // SAFETY: parsed configuration is the T selected by this typed patch operation.
-  const { output, changes } = await update(input as T, updater);
+  const input = config.parse ? config.parse<T>(await readFile(config.path, "utf-8")) : ({} as T);
+  const { output, changes } = await update(input, updater);
 
   if (changes.length > 0) {
     await writeFile(config.path, config.stringify(output), "utf-8");

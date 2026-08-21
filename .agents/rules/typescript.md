@@ -1,4 +1,4 @@
-# TypeScript Conventions
+# TypeScript Rules
 
 Write straightforward, domain-oriented TypeScript. Prefer clear intent, strong inference, and simple
 control flow over cleverness.
@@ -56,3 +56,10 @@ control flow over cleverness.
   complicated generics.
 - Do not introduce abstractions solely to reduce line count.
 - Prefer expressive names and structure over comments.
+
+## Imports
+
+- Treat `../` imports as a sign that the dependency should have a stable public import path.
+- If code is intended to be shared or consumed outside its local module boundary,
+  expose it as a [subpath import](https://nodejs.org/api/packages.html#subpath-imports)
+  rather than importing it via a parent-relative path.

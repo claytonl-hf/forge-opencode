@@ -4,9 +4,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, test } from "vitest";
 
-import type { Profile } from "../../src/features/profiles/profile";
+import type { Profile } from "#features/profiles/profile";
 
-import { install } from "../../src/platform/install";
+import { install } from "#platform/install";
 
 const directories: string[] = [];
 

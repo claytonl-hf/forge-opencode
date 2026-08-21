@@ -13,7 +13,7 @@ export const ForgeCommand = z.object({
 export type ForgeCommand = z.infer<typeof ForgeCommand>;
 
 export async function listCommands(path: string) {
-  return await list<ForgeCommand>(path, (data, template) =>
-    ForgeCommand.parse({ ...data, template }),
+  return await list<ForgeCommand>(path, (definition, template) =>
+    ForgeCommand.parse({ ...definition, template }),
   );
 }

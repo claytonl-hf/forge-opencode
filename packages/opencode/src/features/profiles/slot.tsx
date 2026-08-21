@@ -4,8 +4,8 @@ import type { TuiPluginApi, TuiSlotContext } from "@opencode-ai/plugin/tui";
 
 import { Show, createSignal, onCleanup, onMount, type Accessor } from "solid-js";
 
-import type { TuiSlots } from "../../plugin/integrations/types";
-import type { UseForgeOptions } from "../../plugin/options";
+import type { TuiSlots } from "#plugin/integrations/types";
+import type { UseForgeOptions } from "#plugin/options";
 
 import { peekPendingProfile, subscribePendingProfile } from "./pending";
 import { visibleHomeProfileTitle, visibleProfileTitle } from "./picker";

@@ -3,11 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, test } from "vitest";
 
-import {
-  openSessionInWeb,
-  type OpenWebPayload,
-  writeOpenWebRequest,
-} from "../../../src/features/web/bridge";
+import { openSessionInWeb, type OpenWebPayload, writeOpenWebRequest } from "#features/web/bridge";
 
 const temporaryDirectories: string[] = [];
 

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import type { ForgeEnvironmentVariables } from "../api/env";
+import type { ForgeEnvironmentVariables } from "#lib/api/env";
 
 const ForgeProviderSchema = z.object({
   id: z.string(),

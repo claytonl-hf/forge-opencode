@@ -2,8 +2,9 @@ import type { TuiPluginApi } from "@opencode-ai/plugin/tui";
 
 import { describe, expect, test } from "vitest";
 
-import { UsageIntegration } from "../../../src/features/usage/integration";
-import { ForgeOptions } from "../../../src/plugin/options";
+import { UsageIntegration } from "#features/usage/integration";
+import { ForgeOptions } from "#plugin/options";
+
 import { stub } from "./usage-fixtures";
 
 type PromptResult = { ok: boolean };

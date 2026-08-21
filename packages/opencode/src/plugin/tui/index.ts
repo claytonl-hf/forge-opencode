@@ -2,8 +2,9 @@ import type { TuiPlugin, TuiPluginModule } from "@opencode-ai/plugin/tui";
 
 import { createForge } from "@forge/core";
 
-import { useIntegrations } from "../integrations/registry";
-import { useForgeOptions } from "../options";
+import { useIntegrations } from "#plugin/integrations/registry";
+import { useForgeOptions } from "#plugin/options";
+
 import { registerCommands } from "./commands";
 import { registerSlots } from "./slots";
 

@@ -3,8 +3,8 @@ import type { Config } from "@opencode-ai/plugin";
 
 import { describe, expect, test } from "vitest";
 
-import { ProfileIntegration } from "../../../src/features/profiles/integration";
-import { ForgeOptions, type UseForgeOptions } from "../../../src/plugin/options";
+import { ProfileIntegration } from "#features/profiles/integration";
+import { ForgeOptions, type UseForgeOptions } from "#plugin/options";
 
 describe("profile integration", () => {
   test("keeps the profile command and contributes both prompt slots", async () => {

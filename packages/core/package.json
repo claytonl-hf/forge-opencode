@@ -1,6 +1,9 @@
 {
   "name": "@forge/core",
   "type": "module",
+  "imports": {
+    "#*": "./src/*"
+  },
   "exports": {
     ".": {
       "import": "./src/index.ts",

@@ -2,10 +2,7 @@ import type { Config } from "@opencode-ai/plugin";
 
 import { describe, expect, test, vi } from "vitest";
 
-import {
-  createWorkerHooks,
-  type WorkerSessionClient,
-} from "../../../src/features/workers/integration";
+import { createWorkerHooks, type WorkerSessionClient } from "#features/workers/integration";
 
 function integrationHooks(client: WorkerSessionClient) {
   return createWorkerHooks(client, "/worktree");

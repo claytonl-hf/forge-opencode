@@ -2,7 +2,7 @@ import type { Hooks } from "@opencode-ai/plugin";
 
 import { z } from "zod";
 
-import type { ForgeOptions } from "../../plugin/options";
+import type { ForgeOptions } from "#plugin/options";
 
 import {
   modelForSession,

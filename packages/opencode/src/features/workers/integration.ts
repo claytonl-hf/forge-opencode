@@ -1,6 +1,6 @@
 import type { Hooks } from "@opencode-ai/plugin";
 
-import type { Integration } from "../../plugin/integrations/types";
+import type { Integration } from "#plugin/integrations/types";
 
 const TODO_WRITE_TOOL_ID = "todowrite" as const;
 
@@ -57,24 +57,29 @@ export function createWorkerHooks(client: WorkerSessionClient, directory: string
   };
 }
 
-export const WorkerIntegration: Integration = async (_, options) => ({
-  server: async ({ client, directory }) =>
-    createWorkerHooks(
-      {
-        get: ({ sessionID, directory }) =>
-          client.session.get({ path: { id: sessionID }, query: { directory } }),
-      },
-      directory,
-    ),
-  tui: async (api) => {
-    const [{ isComponentEnabled }, { workerSlot }] = await Promise.all([
-      import("../../plugin/tui/slots"),
-      import("./slot"),
-    ]);
-    if (!isComponentEnabled(options, "workers")) return {};
+export async function WorkerIntegration(
+  _forge: Parameters<Integration>[0],
+  options: Parameters<Integration>[1],
+): ReturnType<Integration> {
+  return {
+    server: async ({ client, directory }) =>
+      createWorkerHooks(
+        {
+          get: ({ sessionID, directory }) =>
+            client.session.get({ path: { id: sessionID }, query: { directory } }),
+        },
+        directory,
+      ),
+    tui: async (api) => {
+      const [{ isComponentEnabled }, { workerSlot }] = await Promise.all([
+        import("#plugin/tui/slots"),
+        import("./slot"),
+      ]);
+      if (!isComponentEnabled(options, "workers")) return {};
 
-    return {
-      slots: { sidebar_content: workerSlot(api) },
-    };
-  },
-});
+      return {
+        slots: { sidebar_content: workerSlot(api) },
+      };
+    },
+  };
+}

@@ -1,7 +1,7 @@
 import type Forge from "@forge/core";
 import type { ForgeUsage } from "@forge/core";
 
-import type { CostTier } from "../../../src/features/usage/gate";
+import type { CostTier } from "#features/usage/gate";
 
 type Catalog = Awaited<ReturnType<Forge["models"]>>;
 

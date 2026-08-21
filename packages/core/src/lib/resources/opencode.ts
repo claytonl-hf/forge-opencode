@@ -1,10 +1,10 @@
 import { join } from "node:path";
 import { z } from "zod";
 
-import type { ForgeEnvironmentVariables } from "../api/env";
+import type { ForgeEnvironmentVariables } from "#lib/api/env";
 
-import { ForgeNotReady } from "../errors";
-import { exists } from "../utils";
+import { ForgeNotReady } from "#lib/errors";
+import { exists } from "#lib/utils";
 
 const ForgeOpenCodeSchema = z.object({
   bin: z.string(),

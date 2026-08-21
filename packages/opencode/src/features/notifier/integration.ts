@@ -3,7 +3,7 @@ import type { TuiPluginApi } from "@opencode-ai/plugin/tui";
 import { appendFileSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 
-import type { Integration } from "../../plugin/integrations/types";
+import type { Integration } from "#plugin/integrations/types";
 
 export type DoneNotifierPayload = {
   v: 1;
@@ -70,12 +70,17 @@ function registerNotifier(api: TuiPluginApi, bridgeFile: string) {
   });
 }
 
-export const NotifierIntegration: Integration = async (forge, options) => ({
-  tui: async (api) => {
-    if (!options.value.tui.notify && process.env.FORGE_OPENCODE_NOTIFY !== "1") return {};
+export async function NotifierIntegration(
+  forge: Parameters<Integration>[0],
+  options: Parameters<Integration>[1],
+): ReturnType<Integration> {
+  return {
+    tui: async (api) => {
+      if (!options.value.tui.notify && process.env.FORGE_OPENCODE_NOTIFY !== "1") return {};
 
-    const { bridge } = await forge.opencode();
-    registerNotifier(api, bridge.notifier);
-    return {};
-  },
-});
+      const { bridge } = await forge.opencode();
+      registerNotifier(api, bridge.notifier);
+      return {};
+    },
+  };
+}

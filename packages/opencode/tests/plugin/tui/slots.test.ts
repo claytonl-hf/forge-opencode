@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from "vitest";
 
-import { registerSlots } from "../../../src/plugin/tui/slots";
+import { registerSlots } from "#plugin/tui/slots";
 
 describe("registerSlots", () => {
   test("positions sidebar content below LSP", () => {

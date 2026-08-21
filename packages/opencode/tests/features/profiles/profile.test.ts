@@ -3,11 +3,7 @@ import type { Session } from "@opencode-ai/sdk";
 
 import { describe, expect, test } from "vitest";
 
-import {
-  ProfileCommand,
-  saveEditedProfile,
-  saveProfile,
-} from "../../../src/features/profiles/command";
+import { ProfileCommand, saveEditedProfile, saveProfile } from "#features/profiles/command";
 import {
   applyPendingProfile,
   clearPendingProfile,
@@ -16,7 +12,7 @@ import {
   subscribePendingProfile,
   takePendingProfile,
   writePendingProfile,
-} from "../../../src/features/profiles/pending";
+} from "#features/profiles/pending";
 import {
   DesktopProfile,
   filterOptions,
@@ -25,7 +21,7 @@ import {
   serializeProfileSelection,
   visibleHomeProfileTitle,
   visibleProfileTitle,
-} from "../../../src/features/profiles/picker";
+} from "#features/profiles/picker";
 import {
   modelForSession,
   PROFILE_METADATA_KEY,
@@ -34,12 +30,9 @@ import {
   setProfileModel,
   type ForgeModelRef,
   type SessionMetadata,
-} from "../../../src/features/profiles/profile";
-import {
-  createProfileSessionHooks,
-  type ProfileSessionClient,
-} from "../../../src/features/profiles/session";
-import { ForgeOptions, type UseForgeOptions } from "../../../src/plugin/options";
+} from "#features/profiles/profile";
+import { createProfileSessionHooks, type ProfileSessionClient } from "#features/profiles/session";
+import { ForgeOptions, type UseForgeOptions } from "#plugin/options";
 
 type ProfileSessionRecord = Session & {
   agent?: string;

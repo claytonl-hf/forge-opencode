@@ -3,8 +3,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, test } from "vitest";
 
-import { listAgents } from "../../../src/lib/resources/agents";
-import { listCommands } from "../../../src/lib/resources/commands";
+import { listAgents } from "#lib/resources/agents";
+import { listCommands } from "#lib/resources/commands";
 
 const directories: string[] = [];
 

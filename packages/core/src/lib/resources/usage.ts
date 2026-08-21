@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { z } from "zod";
 
-import { exists } from "../utils";
+import { exists } from "#lib/utils";
 
 const ForgeUsageSchema = z.looseObject({
   updatedAt: z.number(),

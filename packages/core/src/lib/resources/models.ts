@@ -1,7 +1,7 @@
 import { Models, type Model } from "@opencode-ai/models";
 import { z } from "zod";
 
-import { ForgeCatalogSchema } from "../api/models";
+import { ForgeCatalogSchema } from "#lib/api/models";
 
 type ModelCatalog = z.infer<typeof ForgeCatalogSchema>;
 type ModelDefinition = ModelCatalog["models"][number];
@@ -14,7 +14,7 @@ export type ForgeModel = Model & { metadata: ModelMetadata };
 export type ForgeModels = Record<string, ForgeModel>;
 
 function fromCatalog(item: ModelDefinition): Model {
-  const input = item.capabilities.flatMap((capability) => {
+  const input = item.capabilities.flatMap((capability: string) => {
     if (capability === "text") return ["text" as const];
     if (capability === "images") return ["image" as const];
     if (capability === "docs") return ["pdf" as const];

@@ -12,8 +12,9 @@ import {
   shouldBlock,
   THRESHOLD_USD,
   type CostTier,
-} from "../../../src/features/usage/gate";
-import { createUsageSessionHooks } from "../../../src/features/usage/session";
+} from "#features/usage/gate";
+import { createUsageSessionHooks } from "#features/usage/session";
+
 import { catalog, stub, usage } from "./usage-fixtures";
 
 function forgeWithUsage(snapshot: ForgeUsage | null | undefined) {

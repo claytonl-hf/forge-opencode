@@ -2,10 +2,10 @@ import type { Plugin, PluginModule } from "@opencode-ai/plugin";
 
 import { createForge } from "@forge/core";
 
-import { useIntegrations } from "../integrations/registry";
-import { useForgeOptions } from "../options";
+import { useIntegrations } from "#plugin/integrations/registry";
+import { useForgeOptions } from "#plugin/options";
 
-export const server: Plugin = async (input) => {
+export async function server(input: Parameters<Plugin>[0]): ReturnType<Plugin> {
   const { client, directory } = input;
   try {
     const [forge, options] = await Promise.all([createForge(), useForgeOptions(directory)]);
@@ -29,7 +29,7 @@ export const server: Plugin = async (input) => {
   }
 
   return {};
-};
+}
 
 const plugin: PluginModule = {
   id: "forge",

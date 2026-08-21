@@ -4,7 +4,7 @@ import {
   collectWorkerDescendants,
   deriveWorkerState,
   latestWorkers,
-} from "../../../src/features/workers/model";
+} from "#features/workers/model";
 
 const session = {
   id: "child",

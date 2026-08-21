@@ -2,9 +2,9 @@ import type Forge from "@forge/core";
 
 import { describe, expect, test, vi } from "vitest";
 
-import type { Config } from "../../../src/platform/config";
+import type { Config } from "#platform/config";
 
-import { ToolsIntegration } from "../../../src/features/tools/integration";
+import { ToolsIntegration } from "#features/tools/integration";
 
 async function configHook(forge: Forge) {
   // SAFETY: ToolsIntegration does not inspect options.

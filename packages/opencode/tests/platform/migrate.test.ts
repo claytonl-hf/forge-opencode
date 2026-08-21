@@ -1,8 +1,8 @@
 import { describe, expect, test } from "vitest";
 
-import type { Config } from "../../src/platform/config";
+import type { Config } from "#platform/config";
 
-import { deforge, deforgeTui, deforgeTuiPlugins } from "../../src/platform/migrate";
+import { deforge, deforgeTui, deforgeTuiPlugins } from "#platform/migrate";
 
 function config(value: Parameters<typeof deforge>[0]): Config {
   return value;

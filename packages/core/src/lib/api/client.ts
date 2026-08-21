@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { ForgeNotReady } from "../errors";
+import { ForgeNotReady } from "#lib/errors";
 
 export function client(uri: string, token: string) {
   return async function request<T = unknown>(
@@ -24,11 +24,11 @@ export function client(uri: string, token: string) {
       );
     }
 
-    const data: unknown = await response.json();
+    // SAFETY: The caller's generic type is the established contract for this endpoint's JSON payload.
+    const data = (await response.json()) as T;
 
     if (!schema) {
-      // SAFETY: callers without a schema explicitly select T for this untyped transport.
-      return data as T;
+      return data;
     }
 
     const result = schema.safeParse(data);

@@ -2,7 +2,7 @@
 
 import type { TuiSlotPlugin } from "@opencode-ai/plugin/tui";
 
-import type { TuiSlot, TuiSlots } from "../integrations/types";
+import type { TuiSlot, TuiSlots } from "#plugin/integrations/types";
 
 type SidebarSlot = TuiSlot<"sidebar_content">;
 

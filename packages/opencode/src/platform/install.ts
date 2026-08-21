@@ -3,8 +3,9 @@ import { execa } from "execa";
 import { relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { Profiles } from "../features/profiles/presets";
-import { ForgeDefaultOptions, type ForgeOptions } from "../plugin/options";
+import { Profiles } from "#features/profiles/presets";
+import { ForgeDefaultOptions, type ForgeOptions } from "#plugin/options";
+
 import { ConfigDirectories, patch, PackageRoot, configurePlugins } from "./config";
 
 export const MinimumVersion = "1.18.0";

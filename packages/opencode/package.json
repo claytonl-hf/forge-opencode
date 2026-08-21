@@ -1,6 +1,9 @@
 {
   "name": "@forge/opencode",
   "type": "module",
+  "imports": {
+    "#*": "./src/*"
+  },
   "exports": {
     "./config": {
       "import": "./src/platform/config.ts",

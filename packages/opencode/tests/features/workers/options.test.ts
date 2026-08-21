@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { ForgeDefaultOptions, ForgeOptions } from "../../../src/plugin/options";
+import { ForgeDefaultOptions, ForgeOptions } from "#plugin/options";
 
 describe("Forge TUI worker options", () => {
   test("enables workers by default", () => {

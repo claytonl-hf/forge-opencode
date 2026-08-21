@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from "vitest";
 
-import { WebCommand } from "../../../src/features/web/command";
+import { WebCommand } from "#features/web/command";
 
 describe("/forge:web command", () => {
   test("requires an active session", async () => {

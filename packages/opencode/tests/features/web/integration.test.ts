@@ -1,7 +1,7 @@
 import { describe, expect, test, vi } from "vitest";
 
-import { WebIntegration } from "../../../src/features/web/integration";
-import { ForgeOptions } from "../../../src/plugin/options";
+import { WebIntegration } from "#features/web/integration";
+import { ForgeOptions } from "#plugin/options";
 
 function forge() {
   return {

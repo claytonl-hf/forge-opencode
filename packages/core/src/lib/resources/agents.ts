@@ -19,5 +19,7 @@ export const ForgeAgent = z.looseObject({
 export type ForgeAgent = z.infer<typeof ForgeAgent>;
 
 export async function listAgents(path: string) {
-  return await list<ForgeAgent>(path, (data, prompt) => ForgeAgent.parse({ ...data, prompt }));
+  return await list<ForgeAgent>(path, (definition, prompt) =>
+    ForgeAgent.parse({ ...definition, prompt }),
+  );
 }

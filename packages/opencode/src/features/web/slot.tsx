@@ -4,7 +4,7 @@ import type { TuiPluginApi } from "@opencode-ai/plugin/tui";
 
 import { createSignal, onCleanup } from "solid-js";
 
-import type { TuiSlot } from "../../plugin/integrations/types";
+import type { TuiSlot } from "#plugin/integrations/types";
 
 import { openSessionInWeb } from "./bridge";
 

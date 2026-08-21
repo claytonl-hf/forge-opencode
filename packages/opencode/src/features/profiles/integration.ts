@@ -1,4 +1,4 @@
-import type { Integration } from "../../plugin/integrations/types";
+import type { Integration } from "#plugin/integrations/types";
 
 import { onTuiSessionCreated } from "./pending";
 import { createProfileSessionHooks, type ProfileSessionClient } from "./session";
@@ -60,7 +60,7 @@ export const ProfileIntegration: Integration = async (forge, forgeOptions) => {
       const [{ ProfileCommand }, { ProfileSlots }, { isComponentEnabled }] = await Promise.all([
         import("./command"),
         import("./slot"),
-        import("../../plugin/tui/slots"),
+        import("#plugin/tui/slots"),
       ]);
       api.event.on("session.created", (event) => {
         const info = event.properties.info;

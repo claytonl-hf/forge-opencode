@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, test } from "vitest";
 
-import { getUsage } from "../../../src/lib/resources/usage";
+import { getUsage } from "#lib/resources/usage";
 
 const directories: string[] = [];
 

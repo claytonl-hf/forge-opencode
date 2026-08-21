@@ -1,8 +1,8 @@
 import { describe, expect, test, vi } from "vitest";
 
-import type { Config } from "../../../src/platform/config";
+import type { Config } from "#platform/config";
 
-import { migrationHooks } from "../../../src/features/migration/integration";
+import { migrationHooks } from "#features/migration/integration";
 
 describe("migration integration", () => {
   test("removes legacy configuration before other features configure it", async () => {
