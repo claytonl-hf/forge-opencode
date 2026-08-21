@@ -87,7 +87,10 @@ export async function install(options?: {
         };
 
         if (options?.profiles) {
-          config.profiles = Profiles;
+          config.profiles = {
+            ...config.profiles,
+            ...Profiles,
+          };
         }
 
         return config;
