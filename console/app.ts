@@ -9,7 +9,7 @@ export const context: Context = {};
 export async function run() {
   const commands = await Promise.all([
     import("./commands/install"),
-    import("./commands/models"),
+    import("./commands/debug"),
   ]).then((modules) => {
     return modules.map((module) => module.default);
   });
@@ -23,7 +23,7 @@ export async function run() {
       async beforeEach() {
         try {
           await createForge().then(async (forge) => {
-            await forge.ping();
+            await forge.status();
             context.forge = forge;
           });
         } catch (error) {
