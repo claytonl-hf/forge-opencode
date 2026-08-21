@@ -15,6 +15,7 @@ export const ForgeAgent = z.looseObject({
   color: z.string().optional(),
   permission: z.record(z.string(), z.unknown()).optional(),
 });
+
 export type ForgeAgent = z.infer<typeof ForgeAgent>;
 
 export async function listAgents(path: string) {

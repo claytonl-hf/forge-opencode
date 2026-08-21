@@ -1,16 +1,16 @@
-import { dirname, join } from "node:path";
+import { dirname } from "node:path";
 
 import { client } from "./api/client";
 import { EnvResponseSchema, type ForgeEnvironment } from "./api/env";
-import { getModels, ModelsResponseSchema, type ForgeModels } from "./api/models";
+import { ModelsResponseSchema } from "./api/models";
 import { PingResponseSchema, type ForgeStatus } from "./api/ping";
-import { ForgeNotReady } from "./errors";
 import { listAgents } from "./resources/agents";
 import { listCommands } from "./resources/commands";
+import { getModelsFromCatalog } from "./resources/models";
+import { createOpenCode } from "./resources/opencode";
+import { createProvider } from "./resources/provider";
 import { getUsage } from "./resources/usage";
 import { store, Store } from "./store";
-import { ForgeOpenCode, type ForgeProvider } from "./types";
-import { exists } from "./utils";
 
 export const ForgeMinimumVersion = "0.2.189";
 
@@ -58,40 +58,14 @@ export class Forge {
 
   async opencode() {
     const { env, opencodeBin } = await this.state();
-    const bootstrap =
-      env?.FORGE_TERMINAL_BOOTSTRAP_DIR || join(this.directory, "terminal-bootstrap");
-    const oc = ForgeOpenCode.parse({
-      bin: opencodeBin,
-      directories: {
-        agents: join(bootstrap, "opencode-agents"),
-        commands: join(bootstrap, "opencode-commands"),
-        themes: join(bootstrap, "opencode-themes"),
-        plugins: join(bootstrap, "opencode-plugins"),
-      },
-      permissions: JSON.parse(env.FORGE_OPENCODE_WRITE_PERMISSIONS_JSON),
-      bridge: {
-        notifier: env.FORGE_OPENCODE_DONE_NOTIFIER_FILE,
-        web: {
-          file: env.FORGE_OPENCODE_WEB_BRIDGE_FILE,
-          url: env.FORGE_OPENCODE_ATTACH_URL,
-        },
-      },
-    });
 
-    for (const [key, value] of Object.entries(oc.directories)) {
-      if (!(await exists(value))) {
-        throw new ForgeNotReady(`Forge OpenCode directory ${key} is not accessible at ${value}.`);
-      }
-    }
-
-    return oc;
+    return createOpenCode(opencodeBin, env);
   }
 
-  async models(): Promise<ForgeModels> {
-    const catalog = await this.api.models();
-    const models = await getModels(catalog.opencode.models);
+  async models() {
+    const { env } = await this.state();
 
-    return models;
+    return getModelsFromCatalog(JSON.parse(env.FORGE_OPENCODE_MODEL_CATALOG_JSON));
   }
 
   async agents() {
@@ -113,32 +87,10 @@ export class Forge {
     return agents;
   }
 
-  async provider(): Promise<ForgeProvider | undefined> {
-    try {
-      const { env } = await this.state();
-      const models = await this.models();
+  async provider() {
+    const { env } = await this.state();
 
-      if (Object.keys(models).length === 0) {
-        throw new ForgeNotReady(`No models available in the Forge catalog.`);
-      }
-
-      return {
-        id: "forge",
-        name: "Forge",
-        package: "@openrouter/ai-sdk-provider",
-        api: {
-          endpoint: env.FORGE_OPENROUTER_BROKER_BASE_URL,
-          key: env.FORGE_SUPABASE_ACCESS_TOKEN,
-          headers: {
-            "HTTP-Referer": "https://forge.humanforce.com",
-            "X-Title": "Forge OpenCode",
-          },
-        },
-        models,
-      };
-    } catch {
-      return undefined;
-    }
+    return createProvider(env);
   }
 
   async usage() {

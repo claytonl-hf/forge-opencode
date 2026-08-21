@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { exists } from "../utils";
 
-const ForgeUsage = z.looseObject({
+const ForgeUsageSchema = z.looseObject({
   updatedAt: z.number(),
   catalogEpoch: z.number(),
   budget: z.looseObject({
@@ -24,6 +24,9 @@ const ForgeUsage = z.looseObject({
     source: z.string(),
   }),
 });
+
+export type ForgeUsage = z.infer<typeof ForgeUsageSchema>;
+
 export async function getUsage(file: string) {
   if (!(await exists(file))) {
     return null;
@@ -33,7 +36,7 @@ export async function getUsage(file: string) {
     const contents = await readFile(file, "utf-8");
     const value = JSON.parse(contents);
 
-    return ForgeUsage.parse(value);
+    return ForgeUsageSchema.parse(value);
   } catch {
     return null;
   }

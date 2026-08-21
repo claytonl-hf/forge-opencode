@@ -9,6 +9,7 @@ export const ForgeCommand = z.object({
   agent: z.string().optional(),
   subtask: z.boolean().optional(),
 });
+
 export type ForgeCommand = z.infer<typeof ForgeCommand>;
 
 export async function listCommands(path: string) {

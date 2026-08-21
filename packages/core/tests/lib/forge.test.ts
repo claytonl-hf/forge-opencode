@@ -1,11 +1,11 @@
+import type { ForgeEnvironment } from "@forge/core";
+
 import { afterAll, afterEach, beforeAll, describe, expect, test } from "bun:test";
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { createServer, type IncomingHttpHeaders } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { z } from "zod";
-
-import type { ForgeEnvironment } from "../../src/lib/types";
 
 import { ForgeNotReady } from "../../src/lib/errors";
 import { Forge } from "../../src/lib/forge";

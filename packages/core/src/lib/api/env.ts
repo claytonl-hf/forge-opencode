@@ -19,3 +19,4 @@ export const EnvResponseSchema = z.looseObject({
 });
 
 export type ForgeEnvironment = z.infer<typeof EnvResponseSchema>;
+export type ForgeEnvironmentVariables = ForgeEnvironment["env"];

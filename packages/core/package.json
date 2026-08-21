@@ -12,11 +12,10 @@
     }
   },
   "scripts": {
-    "debug": "bun run scripts/debug.ts",
     "test": "bun test"
   },
   "dependencies": {
-    "@opencode-ai/models": "^0.0.40",
+    "@opencode-ai/models": "^0.0.50",
     "env-paths": "^4.0.0",
     "globlin": "^1.0.0-beta.1",
     "gray-matter": "^4.0.3",
@@ -25,11 +24,8 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@modelcontextprotocol/client": "2.0.0",
-    "@openrouter/ai-sdk-provider": "^3.0.0",
     "@types/bun": "catalog:",
-    "@types/semver": "^7.8.0",
-    "ai": "^7.0.70"
+    "@types/semver": "^7.8.0"
   },
   "peerDependencies": {
     "typescript": "catalog:"

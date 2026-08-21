@@ -1,4 +1,4 @@
-import { Models, type Model, type ReasoningEffort } from "@opencode-ai/models";
+import { type ReasoningEffort } from "@opencode-ai/models";
 import { z } from "zod";
 
 const BudgetSchema = z.object({
@@ -42,7 +42,7 @@ const ForgeModelSchema = z.object({
   reasoningDefault: ModelReasoningSchema.optional(),
 });
 
-const ForgeCatalogSchema = z.object({
+export const ForgeCatalogSchema = z.object({
   models: z.array(ForgeModelSchema),
   defaultModelId: z.string().optional(),
   agents: z.array(
@@ -61,61 +61,3 @@ export const ModelsResponseSchema = z.looseObject({
   opencode: ForgeCatalogSchema,
   budget: BudgetSchema,
 });
-
-type ForgeModel = z.infer<typeof ForgeModelSchema>;
-
-type ModelMetadata = {
-  cost: { tier: string; band: string };
-  speed: { rate: number; tier: string };
-};
-
-type ModelItem = Model & { metadata: ModelMetadata };
-type ModelList = Record<string, ModelItem>;
-
-export async function getModels(input: ForgeModel[]): Promise<ModelList> {
-  const models: ModelList = {};
-  const { openrouter } = await Models.make()
-    .providers({ signal: AbortSignal.timeout(8_000) })
-    .catch(async () => (await import("@opencode-ai/models/snapshot")).providers);
-
-  for (const item of input) {
-    const data = openrouter?.models[item.id];
-    const metadata: ModelMetadata = {
-      cost: {
-        tier: item.costTier,
-        band: item.band,
-      },
-      speed: {
-        rate: item.tokensPerSec,
-        tier: item.speedTier,
-      },
-    };
-
-    if (!data) {
-      // SAFETY: we skip models that are not in OpenRouter.
-      continue;
-    }
-
-    const model: ModelItem = {
-      ...data,
-      id: item.id,
-      name: item.name,
-      description: data?.description ?? "",
-      attachment: data?.attachment ?? item.capabilities.includes("docs"),
-      tool_call: data?.tool_call ?? item.capabilities.includes("tools"),
-      reasoning: data?.reasoning ?? !!item.reasoningModes?.length,
-      limit: { ...data?.limit, context: item.contextLimit, output: item.outputLimit },
-      cost: { ...data?.cost, input: item.costInput, output: item.costOutput },
-      reasoning_options: item.reasoningModes
-        ? [{ type: "effort", values: item.reasoningModes }]
-        : undefined,
-      metadata,
-    };
-
-    models[item.id] = model;
-  }
-
-  return models;
-}
-
-export type ForgeModels = Awaited<ReturnType<typeof getModels>>;

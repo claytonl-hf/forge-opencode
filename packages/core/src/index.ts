@@ -4,6 +4,15 @@ import { handshake } from "./lib/handshake";
 import { Store, store } from "./lib/store";
 import { createVersion } from "./lib/utils";
 
+export type { ForgeAgent } from "./lib/resources/agents";
+export type { ForgeCommand } from "./lib/resources/commands";
+export type { ForgeEnvironment, ForgeEnvironmentVariables } from "./lib/api/env";
+export type { ForgeModel, ForgeModels } from "./lib/resources/models";
+export type { ForgeProvider } from "./lib/resources/provider";
+export type { ForgeUsage } from "./lib/resources/usage";
+
+export { ForgeNotReady, ForgeNotRunning, ForgeError, Forge };
+
 export async function createForge() {
   const { hash, ...instance } = await handshake();
 
@@ -47,7 +56,5 @@ export async function createForge() {
     throw new ForgeNotRunning(`Forge cannot be reached. ${message}`);
   }
 }
-
-export { ForgeNotReady, ForgeNotRunning, ForgeError, Forge };
 
 export default Forge;
