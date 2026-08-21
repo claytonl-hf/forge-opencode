@@ -12,7 +12,7 @@ import { createProvider } from "./resources/provider";
 import { getUsage } from "./resources/usage";
 import { store, Store } from "./store";
 
-export const ForgeMinimumVersion = "0.2.189";
+export const ForgeMinimumVersion = "0.2.192";
 
 export class Forge {
   private environment?: ForgeEnvironment;
