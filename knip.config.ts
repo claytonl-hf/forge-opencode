@@ -1,3 +1,5 @@
+import type { KnipConfig } from "knip";
+
 import { existsSync } from "node:fs";
 
 import { AgentConfigLocations } from "./oxlint.config.ts";
@@ -17,4 +19,4 @@ export default {
       project: ["src/**/*.{ts,tsx}", "tests/**/*.ts"],
     },
   },
-};
+} satisfies KnipConfig;
