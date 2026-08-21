@@ -42,13 +42,15 @@ export const ProfileIntegration: Integration = async (forge, forgeOptions) => {
               config.small_model = `${provider.id}/${model.id}`;
               continue;
             }
-            if (config.agent && config.agent[key]) {
-              config.agent[key].model = `${provider.id}/${model.id}`;
-              if (model.variant === null) {
-                delete config.agent[key].variant;
-              } else {
-                config.agent[key].variant = model.variant;
-              }
+
+            config.agent = config.agent ?? {};
+            config.agent[key] = config.agent[key] ?? {};
+            config.agent[key].model = `${provider.id}/${model.id}`;
+
+            if (model.variant === null) {
+              delete config.agent[key].variant;
+            } else if (model.variant !== undefined) {
+              config.agent[key].variant = model.variant;
             }
           }
         },

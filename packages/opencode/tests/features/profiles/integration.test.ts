@@ -114,4 +114,55 @@ describe("profile integration", () => {
     });
     expect(config.agent?.explorer).not.toHaveProperty("variant");
   });
+
+  test("creates missing agent entries without replacing existing agents", async () => {
+    // SAFETY: this focused Forge fake provides the only method ProfileIntegration uses.
+    const forge = {
+      provider: async () => ({ id: "forge" }),
+    } as Forge;
+    // SAFETY: the config hook reads options.value but never invokes update.
+    const options = {
+      value: ForgeOptions.parse({
+        profile: "balanced",
+        profiles: {
+          balanced: {
+            models: {
+              compaction: { id: "compaction", variant: "high" },
+            },
+          },
+        },
+      }),
+    } as UseForgeOptions;
+    const integration = await ProfileIntegration(forge, options);
+    // SAFETY: this focused PluginInput fake provides the v1 session methods and server URL
+    // required to build the profile hook adapter; this test only invokes the config hook.
+    const hooks = await integration.server!({
+      client: {
+        session: {
+          get: async () => ({ data: undefined }),
+        },
+      },
+      directory: "/tmp",
+      serverUrl: new URL("http://localhost:4096"),
+    } as never);
+    const config: Config = {
+      agent: {
+        reviewer: {
+          description: "User reviewer",
+          prompt: "Review",
+        },
+      },
+    };
+
+    await hooks.config!(config);
+
+    expect(config.agent?.compaction).toMatchObject({
+      model: "forge/compaction",
+      variant: "high",
+    });
+    expect(config.agent?.reviewer).toEqual({
+      description: "User reviewer",
+      prompt: "Review",
+    });
+  });
 });
