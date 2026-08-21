@@ -107,31 +107,33 @@ function forge(): Forge {
 }
 
 beforeAll(async () => {
-  server = createServer(async (request, response) => {
-    const chunks: Buffer[] = [];
-    for await (const chunk of request) {
-      chunks.push(Buffer.from(chunk));
-    }
+  server = createServer((request, response) => {
+    void (async () => {
+      const chunks: Buffer[] = [];
+      for await (const chunk of request) {
+        chunks.push(Buffer.from(chunk));
+      }
 
-    const path = request.url ?? "/";
-    requestCounts.set(path, (requestCounts.get(path) ?? 0) + 1);
-    lastRequest = {
-      method: request.method,
-      url: request.url,
-      headers: request.headers,
-      body: Buffer.concat(chunks).toString("utf8"),
-    };
+      const path = request.url ?? "/";
+      requestCounts.set(path, (requestCounts.get(path) ?? 0) + 1);
+      lastRequest = {
+        method: request.method,
+        url: request.url,
+        headers: request.headers,
+        body: Buffer.concat(chunks).toString("utf8"),
+      };
 
-    const configured = routes.get(path);
-    const route = configured
-      ? "response" in configured
-        ? configured.response
-        : await configured.handler()
-      : { status: 404, body: { error: "not found" } };
+      const configured = routes.get(path);
+      const route = configured
+        ? "response" in configured
+          ? configured.response
+          : await configured.handler()
+        : { status: 404, body: { error: "not found" } };
 
-    response.statusCode = route.status ?? 200;
-    response.setHeader("Content-Type", "application/json");
-    response.end(JSON.stringify(route.body));
+      response.statusCode = route.status ?? 200;
+      response.setHeader("Content-Type", "application/json");
+      response.end(JSON.stringify(route.body));
+    })();
   });
 
   await new Promise<void>((resolve, reject) => {

@@ -726,7 +726,7 @@ describe("ProfileCommand", () => {
     expect(options.writes).toHaveLength(1);
   });
 
-  test("does not install a command-level interceptor for the opening key", () => {
+  test("does not install a command-level interceptor for the opening key", async () => {
     let intercepts = 0;
     let updates = 0;
     // SAFETY: this focused TUI fake implements every member ProfileCommand exercises.
@@ -759,7 +759,7 @@ describe("ProfileCommand", () => {
     const command = ProfileCommand(api, options);
 
     // SAFETY: ProfileCommand does not inspect its invocation argument.
-    command.run({} as never);
+    await command.run({} as never);
 
     expect(intercepts).toBe(0);
     expect(updates).toBe(0);

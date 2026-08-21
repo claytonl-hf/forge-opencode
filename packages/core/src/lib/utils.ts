@@ -17,8 +17,7 @@ export function createVersion(input: string) {
     return undefined;
   }
 
-  return {
-    ...version,
+  return Object.assign(version, {
     satisfies: (range: string) => semver.satisfies(version, range),
-  };
+  });
 }

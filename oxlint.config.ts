@@ -18,6 +18,7 @@ export const AgentConfigLocations = [
 export default defineConfig({
   ignorePatterns: AgentConfigLocations,
   jsPlugins: [{ name: "anti-slop", specifier: "./tools/oxlint/anti-slop/index.ts" }],
+  options: { typeAware: true, typeCheck: true },
   rules: {
     "anti-slop/no-chained-type-assertions": "error",
     "anti-slop/no-conditional-empty-object-spread": "error",
@@ -34,5 +35,9 @@ export default defineConfig({
     "anti-slop/no-unsafe-dictionary-type": "error",
     "anti-slop/no-widen-then-assert": "error",
     "anti-slop/require-safety-comment-for-type-assertion": "error",
+    "typescript/await-thenable": "error",
+    "typescript/no-floating-promises": "error",
+    "typescript/no-misused-promises": "error",
+    "typescript/no-unnecessary-type-assertion": "error",
   },
 });

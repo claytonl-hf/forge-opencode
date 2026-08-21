@@ -31,9 +31,7 @@ export function createWorkerHooks(client: WorkerSessionClient, directory: string
           ...agent.permission,
           [TODO_WRITE_TOOL_ID]: "allow",
         };
-        // SAFETY: OpenCode's runtime and V2 config schema support todowrite, but the plugin's
-        // legacy Config type used by this hook does not include that built-in permission yet.
-        agent.permission = permission as typeof agent.permission;
+        agent.permission = permission;
       }
     },
     "experimental.chat.system.transform": async (input, output) => {

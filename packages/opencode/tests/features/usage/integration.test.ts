@@ -13,7 +13,7 @@ describe("usage integration", () => {
   test("owns its home status and Forge sidebar line", async () => {
     const options = { value: ForgeOptions.parse({}) };
     const models = stub(async () => ({}));
-    const forge = { usage: async () => undefined, models: models.fn };
+    const forge = { usage: async () => undefined, models: () => models.fn() };
     const tui = createTuiApi();
     // SAFETY: UsageIntegration only uses these focused Forge methods during setup.
     const integration = await UsageIntegration(forge as never, options as never);

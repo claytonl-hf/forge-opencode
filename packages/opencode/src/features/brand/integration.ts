@@ -16,7 +16,7 @@ export const BrandIntegration: Integration = async (forge, options) => ({
       const themeJson = join(resources.directories.themes, `${themeName}.json`);
       if (await exists(themeJson)) {
         await api.theme.install(themeJson);
-        await api.theme.set(themeName);
+        api.theme.set(themeName);
       }
     }
 

@@ -30,7 +30,7 @@ function createForge(snapshots: ForgeUsage | null | undefined | (ForgeUsage | nu
   const usageCall = stub(async () => values[Math.min(index++, values.length - 1)]);
   // SAFETY: This focused Forge fake implements the only method used by the usage gate handler.
   return {
-    usage: usageCall.fn,
+    usage: () => usageCall.fn(),
   } as Pick<Forge, "usage">;
 }
 
@@ -40,7 +40,7 @@ function createThrowingForge() {
   });
   // SAFETY: This focused Forge fake only exercises the usage failure path.
   return {
-    usage: usageCall.fn,
+    usage: () => usageCall.fn(),
   } as Pick<Forge, "usage">;
 }
 
@@ -94,19 +94,23 @@ function createTui(
   });
   const client = {
     session: {
-      prompt: sessionPrompt.fn,
-      get: sessionGet.fn,
-      children: children.fn,
-      interrupt: interrupt.fn,
+      prompt: (args: { sessionID: string }) => sessionPrompt.fn(args),
+      get: (args: { sessionID: string }) => sessionGet.fn(args),
+      children: (args: { sessionID: string }) => children.fn(args),
+      interrupt: (args: { sessionID: string }) => interrupt.fn(args),
     },
-    v2: { session: { prompt: v2SessionPrompt.fn } },
+    v2: {
+      session: {
+        prompt: (args: { sessionID: string }) => v2SessionPrompt.fn(args),
+      },
+    },
   };
   // SAFETY: This focused TUI fake implements the client, state, lifecycle, and UI members used here.
   const api = Object.assign({} as TuiPluginApi, {
     client,
     state: {
       session: {
-        get: stateGet.fn,
+        get: (sessionID: string) => stateGet.fn(sessionID),
       },
     },
     lifecycle: {
@@ -115,11 +119,11 @@ function createTui(
       },
     },
     ui: {
-      toast: toast.fn,
-      DialogAlert: dialogAlert.fn,
+      toast: (payload: Toast) => toast.fn(payload),
+      DialogAlert: (props: Dialog) => dialogAlert.fn(props),
       dialog: {
-        replace: dialogReplace.fn,
-        clear: dialogClear.fn,
+        replace: (render: () => Dialog) => dialogReplace.fn(render),
+        clear: () => dialogClear.fn(),
       },
     },
   });

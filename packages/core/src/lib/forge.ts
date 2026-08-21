@@ -79,7 +79,7 @@ export class Forge {
       agents[name] = {
         ...agent,
         name,
-        model: options?.model ? `${provider!.id}/${options.model}` : undefined,
+        model: options?.model ? `${provider.id}/${options.model}` : undefined,
         variant: options?.reasoningEffort?.toString(),
       };
     }

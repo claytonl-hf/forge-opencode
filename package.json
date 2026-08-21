@@ -38,6 +38,7 @@
     "lefthook": "^2.1.10",
     "oxfmt": "^0.63.0",
     "oxlint": "1.78.0",
+    "oxlint-tsgolint": "^7.0.2001",
     "skills-npm": "^1.2.0",
     "ultra-runner": "^3.10.5",
     "vitest": "^4.1.11"

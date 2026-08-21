@@ -185,7 +185,7 @@ export function ProfileCommand(
         api.ui.dialog.replace(() => (
           <ProfileEditor
             api={api}
-            name={profileTitle(editDraft!, editID)}
+            name={profileTitle(editDraft, editID)}
             profile={editDraft!}
             agents={agents}
             models={modelNames}
@@ -207,7 +207,7 @@ export function ProfileCommand(
         api.ui.dialog.replace(() => (
           <ModelPicker
             api={api}
-            profileName={profileTitle(editDraft!, editID)}
+            profileName={profileTitle(editDraft, editID)}
             target={editKey}
             models={models.map((model) => ({
               id: model.id,

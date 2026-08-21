@@ -20,7 +20,7 @@ function forgeWithUsage(snapshot: ForgeUsage | null | undefined) {
   const usageCall = stub(async () => snapshot);
   // SAFETY: This focused Forge fake implements the only method used by the usage hooks.
   return {
-    forge: { usage: usageCall.fn } as Pick<Forge, "usage">,
+    forge: { usage: () => usageCall.fn() } as Pick<Forge, "usage">,
     calls: usageCall.calls,
   };
 }
@@ -200,7 +200,7 @@ describe("usage gate", () => {
         }),
     );
     // SAFETY: This focused Forge fake implements the only method used by the usage hooks.
-    const forge = { usage: usageCall.fn } as Pick<Forge, "usage">;
+    const forge = { usage: () => usageCall.fn() } as Pick<Forge, "usage">;
     const hooks = createUsageSessionHooks(forge, catalog({ "high-model": "high" }));
 
     // SAFETY: The test supplies only the hook fields used by the real handler.
