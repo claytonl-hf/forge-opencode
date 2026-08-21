@@ -10,7 +10,7 @@
       "packages/*"
     ],
     "catalog": {
-      "@types/bun": "^1.4.0",
+      "@types/node": "^26.2.0",
       "typescript": "^5.9.3",
       "zod": "^4.4.3"
     }
@@ -33,12 +33,13 @@
   },
   "devDependencies": {
     "@oxlint/plugins": "1.78.0",
-    "@types/bun": "catalog:",
+    "@types/node": "catalog:",
     "knip": "^6.32.2",
     "lefthook": "^2.1.10",
     "oxfmt": "^0.63.0",
     "oxlint": "1.78.0",
     "skills-npm": "^1.2.0",
+    "ultra-runner": "^3.10.5",
     "vitest": "^4.1.11"
   },
   "peerDependencies": {

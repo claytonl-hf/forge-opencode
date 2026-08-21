@@ -35,7 +35,7 @@
   },
   "devDependencies": {
     "@opencode-ai/sdk": ">=1.18.20",
-    "@types/bun": "catalog:"
+    "@types/node": "catalog:"
   },
   "peerDependencies": {
     "@opencode-ai/plugin": ">=1.18.18 <2.0.0",
