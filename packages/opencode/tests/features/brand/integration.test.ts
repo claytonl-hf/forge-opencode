@@ -5,6 +5,7 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 
 import { BrandIntegration } from "#features/brand/integration";
 import { ForgeOptions } from "#plugin/options";
+import { createEmptyPluginStore } from "#tests/plugin/fakes";
 
 const temporaryDirectories: string[] = [];
 
@@ -29,7 +30,11 @@ describe("brand integration", () => {
     const set = vi.fn(async () => true);
     const options = { value: ForgeOptions.parse({}) };
     // SAFETY: BrandIntegration only calls forge.opencode and reads options.value during setup.
-    const integration = await BrandIntegration(instance as never, options as never);
+    const integration = await BrandIntegration({
+      forge: instance as never,
+      options: options as never,
+      store: createEmptyPluginStore(),
+    });
     // SAFETY: this focused API fake provides the theme operations exercised by brand setup.
     const contribution = await integration.tui!({ theme: { install, set } } as never);
 
@@ -45,7 +50,11 @@ describe("brand integration", () => {
       value: ForgeOptions.parse({ tui: { theme: false, components: { logo: false } } }),
     };
     // SAFETY: BrandIntegration only calls forge.opencode and reads options.value during setup.
-    const integration = await BrandIntegration(instance as never, options as never);
+    const integration = await BrandIntegration({
+      forge: instance as never,
+      options: options as never,
+      store: createEmptyPluginStore(),
+    });
     // SAFETY: disabled setup does not call the omitted theme.set operation.
     const contribution = await integration.tui!({ theme: { install } } as never);
 

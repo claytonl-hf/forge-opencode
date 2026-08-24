@@ -2,6 +2,7 @@ import { describe, expect, test, vi } from "vitest";
 
 import { WebIntegration } from "#features/web/integration";
 import { ForgeOptions } from "#plugin/options";
+import { createEmptyPluginStore } from "#tests/plugin/fakes";
 
 function forge() {
   return {
@@ -16,7 +17,11 @@ describe("web integration", () => {
     const instance = forge();
     const options = { value: ForgeOptions.parse({}) };
     // SAFETY: WebIntegration only calls forge.opencode and reads options.value during setup.
-    const integration = await WebIntegration(instance as never, options as never);
+    const integration = await WebIntegration({
+      forge: instance as never,
+      options: options as never,
+      store: createEmptyPluginStore(),
+    });
     // SAFETY: setup passes the API through to lazy command and slot handlers without reading it.
     const contribution = await integration.tui!({} as never);
 
@@ -30,7 +35,11 @@ describe("web integration", () => {
       value: ForgeOptions.parse({ tui: { components: { web: false } } }),
     };
     // SAFETY: WebIntegration only calls forge.opencode and reads options.value during setup.
-    const integration = await WebIntegration(forge() as never, options as never);
+    const integration = await WebIntegration({
+      forge: forge() as never,
+      options: options as never,
+      store: createEmptyPluginStore(),
+    });
     // SAFETY: setup passes the API through to lazy command and slot handlers without reading it.
     const contribution = await integration.tui!({} as never);
 

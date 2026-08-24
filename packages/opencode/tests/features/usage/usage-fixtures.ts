@@ -1,9 +1,4 @@
-import type Forge from "@forge/core";
-import type { ForgeUsage } from "@forge/core";
-
-import type { CostTier } from "#features/usage/gate";
-
-type Catalog = Awaited<ReturnType<Forge["models"]>>;
+import type { ForgeModelCostTier, ForgeModels, ForgeUsage } from "@forge/core";
 
 export function usage(
   remainingUsd: number,
@@ -33,8 +28,11 @@ export function usage(
   };
 }
 
-export function catalog(entries: Record<string, CostTier>, names: Record<string, string> = {}) {
-  const models: Catalog = {};
+export function catalog(
+  entries: Record<string, ForgeModelCostTier>,
+  names: Record<string, string> = {},
+) {
+  const models: ForgeModels = {};
 
   for (const [id, tier] of Object.entries(entries)) {
     models[id] = {

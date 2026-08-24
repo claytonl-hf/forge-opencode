@@ -1,43 +1,26 @@
-import type Forge from "@forge/core";
-import type { ForgeUsage } from "@forge/core";
+import type { ForgeModelCostTier, ForgeModels, ForgeUsage } from "@forge/core";
+
+import type { PluginStore } from "#plugin/store";
 
 export const THRESHOLD_USD = parseFloat(process.env.FORGE_USAGE_ALERT_BALANCE || "2");
 
-export type CostTier = "low" | "mid" | "high";
-
 export const dialogTitle = "You are almost out of Forge credits";
 
-function costTier(value: string): CostTier | undefined {
+function costTier(value: string | undefined): ForgeModelCostTier | undefined {
   if (value === "low" || value === "mid" || value === "high") return value;
   return undefined;
 }
 
-export function isAboveLow(tier: CostTier | undefined): boolean {
-  return tier === "mid" || tier === "high";
-}
-
-export function catalogModel(
-  catalog: Awaited<ReturnType<Forge["models"]>>,
+export function isLowTierModel(
+  models: PluginStore["models"],
   modelID: string | undefined,
-) {
-  if (!modelID) return undefined;
-
-  return catalog[modelID] ?? (modelID.startsWith("forge/") ? catalog[modelID.slice(6)] : undefined);
+): boolean | undefined {
+  const tier = costTier(modelID ? models.getModel(modelID)?.metadata.cost.tier : undefined);
+  if (!tier) return undefined;
+  return tier === "low";
 }
 
-export function catalogTier(
-  catalog: Awaited<ReturnType<Forge["models"]>>,
-  providerID: string | undefined,
-  modelID: string | undefined,
-): CostTier | undefined {
-  if (providerID !== "forge" || !modelID) return undefined;
-
-  return costTier(catalogModel(catalog, modelID)?.metadata.cost.tier ?? "");
-}
-
-export function lowTierModels(
-  catalog: Awaited<ReturnType<Forge["models"]>>,
-): { id: string; name: string }[] {
+export function getLowTierModels(catalog: ForgeModels): { id: string; name: string }[] {
   return Object.entries(catalog)
     .filter(([, model]) => costTier(model.metadata.cost.tier) === "low")
     .map(([id, model]) => ({ id, name: model.name || id }))

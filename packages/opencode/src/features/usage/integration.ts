@@ -1,24 +1,22 @@
+import type { PluginContext } from "#plugin/context";
 import type { Integration } from "#plugin/integrations/types";
 
 import { startUsageGateDialog } from "./dialog";
 import { createUsageSessionHooks } from "./session";
 
-export async function UsageIntegration(
-  forge: Parameters<Integration>[0],
-  options: Parameters<Integration>[1],
-): ReturnType<Integration> {
-  const catalog = await forge.models().catch(() => ({}));
+export async function UsageIntegration({ store, options }: PluginContext): ReturnType<Integration> {
+  await store.models.refresh().catch(() => ({}));
 
   return {
-    server: async () => createUsageSessionHooks(forge, catalog),
+    server: async () => createUsageSessionHooks(store),
     tui: async (api) => {
-      startUsageGateDialog(api, forge, catalog);
+      startUsageGateDialog(api, store);
       const [{ UsageSlots }, { isComponentEnabled }] = await Promise.all([
         import("./slot"),
         import("#plugin/tui/slots"),
       ]);
       return {
-        slots: isComponentEnabled(options, "usage") ? UsageSlots(api, forge) : {},
+        slots: isComponentEnabled(options, "usage") ? UsageSlots(store) : {},
       };
     },
   };

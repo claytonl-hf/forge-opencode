@@ -5,10 +5,10 @@ import type { Command } from "@opentui/keymap";
 import { createSignal } from "solid-js";
 
 import type { UseForgeOptions } from "#plugin/options";
+import type { PluginStore } from "#plugin/store";
 
 import type { Profile } from "./profile";
 
-import { clearPendingProfile, writePendingProfile } from "./pending";
 import {
   DesktopProfile,
   ModelPicker,
@@ -29,9 +29,10 @@ export async function saveProfile(
     api: TuiPluginApi;
     options: UseForgeOptions;
     profiles: Record<string, Profile>;
+    store: PluginStore;
   },
 ): Promise<void> {
-  const { api, options, profiles } = context;
+  const { api, options, profiles, store } = context;
   const title =
     selection && selection !== DesktopProfile
       ? `Forge profile set to ${profileTitle(profiles[selection], selection)}`
@@ -53,7 +54,7 @@ export async function saveProfile(
   const route = api.route.current;
   if (route.name !== "session") {
     if (scope === ProfileScope.Session) {
-      writePendingProfile(profileName ?? null);
+      store.session.set(profileName ?? null);
       api.ui.toast({
         variant: "success",
         title,
@@ -63,7 +64,7 @@ export async function saveProfile(
       return;
     }
 
-    clearPendingProfile();
+    store.session.set(undefined);
     await saveGlobal();
     api.ui.toast({
       variant: "success",
@@ -85,7 +86,7 @@ export async function saveProfile(
   if (profileName) metadata[PROFILE_METADATA_KEY] = profileName;
   else delete metadata[PROFILE_METADATA_KEY];
   await api.client.session.update({ sessionID, metadata });
-  clearPendingProfile();
+  store.session.set(profileName ?? null);
   const model = modelForSession(profileName ? profiles[profileName] : undefined, session?.agent);
   if (model) {
     try {
@@ -128,6 +129,7 @@ export async function saveEditedProfile(
 export function ProfileCommand(
   api: TuiPluginApi,
   options: UseForgeOptions,
+  store: PluginStore,
 ): Command<Renderable, KeyEvent> {
   return {
     name: "forge:profile",
@@ -154,7 +156,7 @@ export function ProfileCommand(
 
       const confirm = async () => {
         close();
-        await saveProfile(selected, scope(), { api, options, profiles });
+        await saveProfile(selected, scope(), { api, options, profiles, store });
       };
 
       const showPicker = () => {

@@ -4,6 +4,7 @@
     "jsx": "react-jsx",
     "jsxImportSource": "@opentui/solid",
     "paths": {
+      "#tests/*": ["./tests/*"],
       "#*": ["./src/*", "../core/src/*"]
     }
   }

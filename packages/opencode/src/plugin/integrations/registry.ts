@@ -1,8 +1,7 @@
-import type Forge from "@forge/core";
 import type { Hooks, PluginInput } from "@opencode-ai/plugin";
 import type { TuiPluginApi } from "@opencode-ai/plugin/tui";
 
-import type { UseForgeOptions } from "#plugin/options";
+import type { PluginContext } from "#plugin/context";
 
 import { BrandIntegration } from "#features/brand/integration";
 import { MigrationIntegration } from "#features/migration/integration";
@@ -17,17 +16,17 @@ import { createHooks } from "#plugin/server/hooks";
 
 import type { TuiOutput } from "./types";
 
-export async function useIntegrations(forge: Forge, options: UseForgeOptions) {
+export async function useIntegrations(ctx: PluginContext) {
   const integrations = await Promise.all([
-    BrandIntegration(forge, options),
-    MigrationIntegration(forge, options),
-    ModelsIntegration(forge, options),
-    NotifierIntegration(forge, options),
-    ProfileIntegration(forge, options),
-    ToolsIntegration(forge, options),
-    UsageIntegration(forge, options),
-    WebIntegration(forge, options),
-    WorkerIntegration(forge, options),
+    BrandIntegration(ctx),
+    MigrationIntegration(ctx),
+    ModelsIntegration(ctx),
+    NotifierIntegration(ctx),
+    ProfileIntegration(ctx),
+    ToolsIntegration(ctx),
+    UsageIntegration(ctx),
+    WebIntegration(ctx),
+    WorkerIntegration(ctx),
   ]);
 
   return {

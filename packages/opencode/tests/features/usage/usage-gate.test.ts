@@ -1,5 +1,4 @@
-import type Forge from "@forge/core";
-import type { ForgeUsage } from "@forge/core";
+import type { ForgeModelCostTier, ForgeUsage } from "@forge/core";
 
 import { describe, expect, test } from "vitest";
 
@@ -7,33 +6,36 @@ import {
   blockMessage,
   dialogMessage,
   dialogTitle,
-  isAboveLow,
-  lowTierModels,
+  getLowTierModels,
+  isLowTierModel,
   shouldBlock,
   THRESHOLD_USD,
-  type CostTier,
 } from "#features/usage/gate";
 import { createUsageSessionHooks } from "#features/usage/session";
+import { createPluginStore } from "#plugin/store";
 
 import { catalog, stub, usage } from "./usage-fixtures";
 
-function forgeWithUsage(snapshot: ForgeUsage | null | undefined) {
+function forgeWithUsage(snapshot: ForgeUsage | null | undefined, models = catalog({})) {
   const usageCall = stub(async () => snapshot);
   // SAFETY: This focused Forge fake implements the only method used by the usage hooks.
   return {
-    forge: { usage: () => usageCall.fn() } as Pick<Forge, "usage">,
+    store: createPluginStore({ models: async () => models, usage: () => usageCall.fn() }),
     calls: usageCall.calls,
   };
 }
 
 describe("usage gate", () => {
-  test.each<[CostTier | undefined, boolean]>([
-    ["mid", true],
-    ["high", true],
-    ["low", false],
-    [undefined, false],
-  ])("isAboveLow(%s) is %s", (tier, aboveLow) => {
-    expect(isAboveLow(tier)).toBe(aboveLow);
+  test.each<[ForgeModelCostTier | undefined, boolean | undefined]>([
+    ["mid", false],
+    ["high", false],
+    ["low", true],
+    [undefined, undefined],
+  ])("isLowTierModel(%s) is %s", (tier, lowTier) => {
+    const model = tier ? { metadata: { cost: { tier } } } : undefined;
+    // SAFETY: isLowTierModel only calls getModel; this stub returns the table-driven metadata.
+    const models = { getModel: () => model } as never;
+    expect(isLowTierModel(models, "model-id")).toBe(lowTier);
   });
 
   test.each([
@@ -70,7 +72,7 @@ describe("usage gate", () => {
     aModel.name = "Alpha";
     midModel.name = "Middle";
 
-    expect(lowTierModels(models)).toEqual([
+    expect(getLowTierModels(models)).toEqual([
       { id: "a-model", name: "Alpha" },
       { id: "z-model", name: "Zulu" },
     ]);
@@ -90,11 +92,12 @@ describe("usage gate", () => {
   test.each(["mid-model", "high-model"])(
     "%s throws when the balance gate blocks",
     async (modelID) => {
-      const { forge } = forgeWithUsage(usage(THRESHOLD_USD));
-      const hooks = createUsageSessionHooks(
-        forge,
+      const { store } = forgeWithUsage(
+        usage(THRESHOLD_USD),
         catalog({ "mid-model": "mid", "high-model": "high" }),
       );
+      await store.models.refresh();
+      const hooks = createUsageSessionHooks(store);
 
       // SAFETY: The test supplies only the hook fields used by the real handler.
       await expect(
@@ -109,8 +112,9 @@ describe("usage gate", () => {
   );
 
   test("chat.params uses the input model id", async () => {
-    const { forge } = forgeWithUsage(usage(THRESHOLD_USD));
-    const hooks = createUsageSessionHooks(forge, catalog({ "high-model": "high" }));
+    const { store } = forgeWithUsage(usage(THRESHOLD_USD), catalog({ "high-model": "high" }));
+    await store.models.refresh();
+    const hooks = createUsageSessionHooks(store);
 
     // SAFETY: The test supplies only the hook fields used by the real handler.
     await expect(
@@ -124,11 +128,12 @@ describe("usage gate", () => {
   });
 
   test("chat.message prefers output.message.model over input.model", async () => {
-    const { forge } = forgeWithUsage(usage(THRESHOLD_USD));
-    const hooks = createUsageSessionHooks(
-      forge,
+    const { store } = forgeWithUsage(
+      usage(THRESHOLD_USD),
       catalog({ "input-model": "low", "output-model": "mid" }),
     );
+    await store.models.refresh();
+    const hooks = createUsageSessionHooks(store);
 
     // SAFETY: The test supplies only the hook fields used by the real handler.
     await expect(
@@ -142,8 +147,9 @@ describe("usage gate", () => {
   });
 
   test("does not throw for a blocked low-tier target", async () => {
-    const { forge } = forgeWithUsage(usage(THRESHOLD_USD));
-    const hooks = createUsageSessionHooks(forge, catalog({ "low-model": "low" }));
+    const { store } = forgeWithUsage(usage(THRESHOLD_USD), catalog({ "low-model": "low" }));
+    await store.models.refresh();
+    const hooks = createUsageSessionHooks(store);
 
     // SAFETY: The test supplies only the hook fields used by the real handler.
     await expect(
@@ -159,8 +165,9 @@ describe("usage gate", () => {
     ["missing catalog model", undefined],
     ["non-Forge provider", { providerID: "openai", modelID: "high-model" }],
   ])("does not throw for %s", async (_, model) => {
-    const { forge } = forgeWithUsage(usage(THRESHOLD_USD));
-    const hooks = createUsageSessionHooks(forge, catalog({ "high-model": "high" }));
+    const { store } = forgeWithUsage(usage(THRESHOLD_USD), catalog({ "high-model": "high" }));
+    await store.models.refresh();
+    const hooks = createUsageSessionHooks(store);
 
     // SAFETY: The test supplies only the hook fields used by the real handler.
     await expect(
@@ -173,8 +180,9 @@ describe("usage gate", () => {
     ["missing", undefined],
     ["null", null],
   ])("does not throw when usage is %s", async (_, snapshot) => {
-    const { forge } = forgeWithUsage(snapshot);
-    const hooks = createUsageSessionHooks(forge, catalog({ "high-model": "high" }));
+    const { store } = forgeWithUsage(snapshot, catalog({ "high-model": "high" }));
+    await store.models.refresh();
+    const hooks = createUsageSessionHooks(store);
 
     // SAFETY: The test supplies only the hook fields used by the real handler.
     await expect(
@@ -201,8 +209,12 @@ describe("usage gate", () => {
         }),
     );
     // SAFETY: This focused Forge fake implements the only method used by the usage hooks.
-    const forge = { usage: () => usageCall.fn() } as Pick<Forge, "usage">;
-    const hooks = createUsageSessionHooks(forge, catalog({ "high-model": "high" }));
+    const store = createPluginStore({
+      models: async () => catalog({ "high-model": "high" }),
+      usage: () => usageCall.fn(),
+    });
+    await store.models.refresh();
+    const hooks = createUsageSessionHooks(store);
 
     // SAFETY: The test supplies only the hook fields used by the real handler.
     const message = hooks["chat.message"]?.(
@@ -219,6 +231,5 @@ describe("usage gate", () => {
 
     await expect(message).resolves.toBeUndefined();
     await expect(params).resolves.toBeUndefined();
-    expect("models" in forge).toBe(false);
   });
 });

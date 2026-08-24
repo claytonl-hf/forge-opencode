@@ -1,12 +1,10 @@
 import { exists } from "@forge/core/utils";
 import { join } from "node:path";
 
+import type { PluginContext } from "#plugin/context";
 import type { Integration } from "#plugin/integrations/types";
 
-export async function BrandIntegration(
-  forge: Parameters<Integration>[0],
-  options: Parameters<Integration>[1],
-): ReturnType<Integration> {
+export async function BrandIntegration({ forge, options }: PluginContext): ReturnType<Integration> {
   return {
     tui: async (api) => {
       const [{ Home }, { isComponentEnabled }, resources] = await Promise.all([

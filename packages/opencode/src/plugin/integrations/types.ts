@@ -1,4 +1,3 @@
-import type Forge from "@forge/core";
 import type { Hooks, PluginInput } from "@opencode-ai/plugin";
 import type {
   KeyEvent,
@@ -9,7 +8,7 @@ import type {
 } from "@opencode-ai/plugin/tui";
 import type { Command } from "@opentui/keymap";
 
-import type { UseForgeOptions } from "#plugin/options";
+import type { PluginContext } from "#plugin/context";
 
 export type TuiCommand = Command<Renderable, KeyEvent>;
 export type TuiSlot<Name extends keyof TuiHostSlotMap> = NonNullable<TuiSlotPlugin["slots"][Name]>;
@@ -29,10 +28,7 @@ type TuiIntegration = (api: TuiPluginApi) => Promise<{
   slots?: TuiSlots;
 }>;
 
-export type Integration = (
-  forge: Forge,
-  options: UseForgeOptions,
-) => Promise<{
+export type Integration = (ctx: PluginContext) => Promise<{
   server?: ServerIntegration;
   tui?: TuiIntegration;
 }>;

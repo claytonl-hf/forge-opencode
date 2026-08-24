@@ -4,6 +4,7 @@ import { createForge } from "@forge/core";
 
 import { useIntegrations } from "#plugin/integrations/registry";
 import { useForgeOptions } from "#plugin/options";
+import { createPluginStore } from "#plugin/store";
 
 import { registerCommands } from "./commands";
 import { registerSlots } from "./slots";
@@ -11,7 +12,7 @@ import { registerSlots } from "./slots";
 export const tui: TuiPlugin = async (api) => {
   const forge = await createForge();
   const options = await useForgeOptions(api.state.path.directory);
-  const integrations = await useIntegrations(forge, options);
+  const integrations = await useIntegrations({ forge, options, store: createPluginStore(forge) });
   const output = await integrations.tui(api);
 
   registerCommands(api, output.commands);

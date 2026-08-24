@@ -4,6 +4,7 @@ import { describe, expect, test } from "vitest";
 
 import { UsageIntegration } from "#features/usage/integration";
 import { ForgeOptions } from "#plugin/options";
+import { createPluginStore } from "#plugin/store";
 
 import { stub } from "./usage-fixtures";
 
@@ -17,7 +18,11 @@ describe("usage integration", () => {
     const forge = { usage: async () => undefined, models: () => models.fn() };
     const tui = createTuiApi();
     // SAFETY: UsageIntegration only uses these focused Forge methods during setup.
-    const integration = await UsageIntegration(forge as never, options as never);
+    const integration = await UsageIntegration({
+      forge: forge as never,
+      options: options as never,
+      store: createPluginStore(forge),
+    });
     const contribution = await integration.tui!(tui.api);
 
     expect(models.calls).toHaveLength(1);
@@ -33,7 +38,11 @@ describe("usage integration", () => {
     const tui = createTuiApi();
     const originalPrompt = tui.api.client.session.prompt;
     // SAFETY: UsageIntegration only uses these focused Forge methods during setup.
-    const integration = await UsageIntegration(forge as never, options as never);
+    const integration = await UsageIntegration({
+      forge: forge as never,
+      options: options as never,
+      store: createPluginStore(forge),
+    });
     const contribution = await integration.tui!(tui.api);
 
     expect(contribution.slots).toEqual({});

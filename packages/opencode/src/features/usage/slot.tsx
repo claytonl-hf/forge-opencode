@@ -1,22 +1,21 @@
 /** @jsxImportSource @opentui/solid */
 
-import type { Forge, ForgeUsage } from "@forge/core";
-import type { TuiPluginApi, TuiSlotContext } from "@opencode-ai/plugin/tui";
+import type { ForgeUsage } from "@forge/core";
+import type { TuiSlotContext } from "@opencode-ai/plugin/tui";
 
 import { createSignal, onCleanup, onMount, type ComponentProps } from "solid-js";
 
 import type { TuiSlots } from "#plugin/integrations/types";
+import type { PluginStore } from "#plugin/store";
 
 type Props = ComponentProps<"box"> &
   TuiSlotContext & {
-    api: TuiPluginApi;
-    forge: Forge;
-    poll?: number;
+    usage: PluginStore["usage"];
     variant: "line" | "status";
   };
 
-function Usage({ api, theme, forge, poll, variant, ...props }: Props) {
-  const [usage, setUsage] = createSignal<ForgeUsage | null | undefined>();
+function Usage({ theme, usage: resource, variant, ...props }: Props) {
+  const [usage, setUsage] = createSignal<ForgeUsage | null | undefined>(resource.get());
   const balance = () => {
     const value = usage()?.budget.spentCreditsToday ?? 0;
     const total = usage()?.budget.dailyBudgetCredits ?? 0;
@@ -24,32 +23,9 @@ function Usage({ api, theme, forge, poll, variant, ...props }: Props) {
     return total - value;
   };
 
-  let timer: ReturnType<typeof setTimeout>;
-  let disposed = false;
-
-  void api;
-
-  async function refresh() {
-    try {
-      const next = await forge.usage();
-
-      if (!disposed) setUsage(next);
-    } finally {
-      if (!disposed) {
-        timer = setTimeout(() => {
-          void refresh();
-        }, poll);
-      }
-    }
-  }
-
   onMount(() => {
-    void refresh();
-  });
-
-  onCleanup(() => {
-    disposed = true;
-    clearTimeout(timer);
+    const stop = resource.listen((next) => setUsage(next));
+    onCleanup(stop);
   });
 
   return (
@@ -62,13 +38,13 @@ function Usage({ api, theme, forge, poll, variant, ...props }: Props) {
   );
 }
 
-export function UsageSlots(api: TuiPluginApi, forge: Forge): TuiSlots {
+export function UsageSlots(store: PluginStore): TuiSlots {
   return {
     home_bottom: (context) => (
-      <Usage api={api} theme={context.theme} forge={forge} variant="status" marginTop={1} />
+      <Usage theme={context.theme} usage={store.usage} variant="status" marginTop={1} />
     ),
     sidebar_content: [
-      (context) => <Usage api={api} theme={context.theme} forge={forge} variant="line" />,
+      (context) => <Usage theme={context.theme} usage={store.usage} variant="line" />,
     ],
   };
 }

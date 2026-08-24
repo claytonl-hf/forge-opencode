@@ -1,5 +1,6 @@
 import type { Hooks } from "@opencode-ai/plugin";
 
+import type { PluginContext } from "#plugin/context";
 import type { Integration } from "#plugin/integrations/types";
 
 const TODO_WRITE_TOOL_ID = "todowrite" as const;
@@ -57,10 +58,7 @@ export function createWorkerHooks(client: WorkerSessionClient, directory: string
   };
 }
 
-export async function WorkerIntegration(
-  _forge: Parameters<Integration>[0],
-  options: Parameters<Integration>[1],
-): ReturnType<Integration> {
+export async function WorkerIntegration({ options }: PluginContext): ReturnType<Integration> {
   return {
     server: async ({ client, directory }) =>
       createWorkerHooks(

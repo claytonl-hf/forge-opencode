@@ -1,15 +1,8 @@
-import type Forge from "@forge/core";
 import type { TuiPluginApi } from "@opencode-ai/plugin/tui";
 
-import {
-  catalogModel,
-  catalogTier,
-  dialogMessage,
-  dialogTitle,
-  isAboveLow,
-  lowTierModels,
-  shouldBlock,
-} from "./gate";
+import type { PluginStore } from "#plugin/store";
+
+import { dialogMessage, dialogTitle, getLowTierModels, isLowTierModel, shouldBlock } from "./gate";
 
 type UsageGateClient = TuiPluginApi["client"] & {
   session: TuiPluginApi["client"]["session"] & {
@@ -37,13 +30,10 @@ async function resolveSessionModel(api: TuiPluginApi, sessionID: string) {
   }
 }
 
-function catalogModelName(
-  catalog: Awaited<ReturnType<Forge["models"]>>,
-  model: SessionModel,
-): string {
+function modelName(store: Pick<PluginStore, "models">, model: SessionModel): string {
   if (model.providerID !== "forge") return model.id;
 
-  return catalogModel(catalog, model.id)?.name || model.id;
+  return store.models.getModel(model.id)?.name || model.id;
 }
 
 async function sessionChildren(api: TuiPluginApi, sessionID: string) {
@@ -57,7 +47,7 @@ async function sessionChildren(api: TuiPluginApi, sessionID: string) {
 async function interruptBlockedSessions(
   api: TuiPluginApi,
   client: UsageGateClient,
-  catalog: Awaited<ReturnType<Forge["models"]>>,
+  store: Pick<PluginStore, "models">,
   sessionID: string,
   model: SessionModel | undefined,
   visited = new Set<string>(),
@@ -66,7 +56,10 @@ async function interruptBlockedSessions(
   visited.add(sessionID);
 
   const currentModel = model ?? (await resolveSessionModel(api, sessionID));
-  if (currentModel && isAboveLow(catalogTier(catalog, currentModel.providerID, currentModel.id))) {
+  if (
+    currentModel?.providerID === "forge" &&
+    isLowTierModel(store.models, currentModel.id) === false
+  ) {
     try {
       // SAFETY: The runtime TUI client exposes the v1 interrupt compatibility method and v2 fallback.
       if (client.session.interrupt) {
@@ -84,15 +77,14 @@ async function interruptBlockedSessions(
 
   await Promise.all(
     (response.data ?? []).map((child) =>
-      interruptBlockedSessions(api, client, catalog, child.id, undefined, visited),
+      interruptBlockedSessions(api, client, store, child.id, undefined, visited),
     ),
   );
 }
 
 export function startUsageGateDialog(
   api: TuiPluginApi,
-  forge: Pick<Forge, "usage">,
-  catalog: Awaited<ReturnType<Forge["models"]>>,
+  store: Pick<PluginStore, "usage" | "models">,
 ): void {
   // SAFETY: The runtime TUI client exposes v1/v2 session prompt and interrupt methods with these shapes.
   const client = api.client as UsageGateClient;
@@ -110,7 +102,7 @@ export function startUsageGateDialog(
             title: dialogTitle,
             message: dialogMessage(
               modelName,
-              lowTierModels(catalog).map((model) => model.name),
+              getLowTierModels(store.models.get() ?? {}).map((model) => model.name),
             ),
           }),
         );
@@ -128,17 +120,16 @@ export function startUsageGateDialog(
     if (!sessionID) return;
 
     try {
-      const usage = await forge.usage();
+      const usage = await store.usage.refresh();
       if (!usage || !shouldBlock(usage)) return;
 
       const model = await resolveSessionModel(api, sessionID);
-      await interruptBlockedSessions(api, client, catalog, sessionID, model);
+      await interruptBlockedSessions(api, client, store, sessionID, model);
 
       if (!rejected || !model) return;
-      const tier = catalogTier(catalog, model.providerID, model.id);
-      if (!isAboveLow(tier)) return;
+      if (isLowTierModel(store.models, model.id) !== false) return;
 
-      scheduleDialog(catalogModelName(catalog, model));
+      scheduleDialog(modelName(store, model));
     } catch {
       // Usage and session lookup failures must never disturb the TUI.
     }

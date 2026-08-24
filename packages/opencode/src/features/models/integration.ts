@@ -1,12 +1,15 @@
+import type { PluginContext } from "#plugin/context";
 import type { Integration } from "#plugin/integrations/types";
 
 import { configureAgents, type ConfigAgent } from "#platform/config";
 
-export async function ModelsIntegration(
-  forge: Parameters<Integration>[0],
-  { value: options }: Parameters<Integration>[1],
-): ReturnType<Integration> {
-  const [provider, models] = await Promise.all([forge.provider(), forge.models()]);
+export async function ModelsIntegration({
+  forge,
+  store,
+  options: forgeOptions,
+}: PluginContext): ReturnType<Integration> {
+  const { value: options } = forgeOptions;
+  const [provider, models] = await Promise.all([forge.provider(), store.models.refresh()]);
 
   return {
     server: async () => ({

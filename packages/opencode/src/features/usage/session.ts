@@ -1,24 +1,14 @@
-import type Forge from "@forge/core";
 import type { Hooks } from "@opencode-ai/plugin";
 
-import { blockMessage, catalogTier, isAboveLow, shouldBlock, type CostTier } from "./gate";
+import type { PluginStore } from "#plugin/store";
 
-export function createUsageSessionHooks(
-  forge: Pick<Forge, "usage">,
-  catalog: Awaited<ReturnType<Forge["models"]>>,
-): Hooks {
-  let usagePromise: ReturnType<Forge["usage"]> | undefined;
+import { blockMessage, isLowTierModel, shouldBlock } from "./gate";
 
-  const gate = async (tier: CostTier | undefined) => {
-    if (!isAboveLow(tier)) return;
+export function createUsageSessionHooks(store: Pick<PluginStore, "usage" | "models">): Hooks {
+  const gate = async (modelID: string | undefined) => {
+    if (isLowTierModel(store.models, modelID) !== false) return;
 
-    if (!usagePromise) {
-      usagePromise = forge.usage().finally(() => {
-        usagePromise = undefined;
-      });
-    }
-
-    const usage = await usagePromise;
+    const usage = await store.usage.refresh();
     if (!usage) return;
     if (shouldBlock(usage)) throw new Error(blockMessage(usage));
   };
@@ -26,10 +16,10 @@ export function createUsageSessionHooks(
   return {
     "chat.message": async (input, output) => {
       const model = output.message.model ?? input.model;
-      await gate(catalogTier(catalog, model?.providerID, model?.modelID));
+      await gate(model?.providerID === "forge" ? model.modelID : undefined);
     },
     "chat.params": async (input) => {
-      await gate(catalogTier(catalog, input.model.providerID, input.model.id));
+      await gate(input.model.providerID === "forge" ? input.model.id : undefined);
     },
   };
 }

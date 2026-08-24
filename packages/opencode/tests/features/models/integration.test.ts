@@ -6,6 +6,7 @@ import type { Config } from "#platform/config";
 
 import { ModelsIntegration } from "#features/models/integration";
 import { ForgeDefaultOptions, ForgeOptions } from "#plugin/options";
+import { createPluginStore } from "#plugin/store";
 
 function provider() {
   return {
@@ -18,7 +19,11 @@ function provider() {
 
 async function configHook(forge: Forge, value = ForgeDefaultOptions) {
   // SAFETY: the focused options fake provides the value read by ModelsIntegration.
-  const integration = await ModelsIntegration(forge, { value } as never);
+  const integration = await ModelsIntegration({
+    forge,
+    options: { value } as never,
+    store: createPluginStore(forge),
+  });
   // SAFETY: the models server adapter does not inspect its PluginInput argument.
   return (await integration.server!({} as never)).config!;
 }

@@ -3,7 +3,7 @@ import type { Integration } from "#plugin/integrations/types";
 import { onTuiSessionCreated } from "./pending";
 import { createProfileSessionHooks, type ProfileSessionClient } from "./session";
 
-export const ProfileIntegration: Integration = async (forge, forgeOptions) => {
+export const ProfileIntegration: Integration = async ({ forge, options: forgeOptions, store }) => {
   const options = forgeOptions.value;
   const provider = await forge.provider();
 
@@ -70,6 +70,7 @@ export const ProfileIntegration: Integration = async (forge, forgeOptions) => {
           agent: info.agent,
           metadata: info.metadata,
           profiles: forgeOptions.value.profiles ?? {},
+          store,
           getParent: async (id) => api.state.session.get(id),
           update: async (sessionID, metadata) => {
             await api.client.session.update({ sessionID, metadata });
@@ -81,8 +82,10 @@ export const ProfileIntegration: Integration = async (forge, forgeOptions) => {
       });
 
       return {
-        commands: [ProfileCommand(api, forgeOptions)],
-        slots: isComponentEnabled(forgeOptions, "profile") ? ProfileSlots(api, forgeOptions) : {},
+        commands: [ProfileCommand(api, forgeOptions, store)],
+        slots: isComponentEnabled(forgeOptions, "profile")
+          ? ProfileSlots(api, forgeOptions, store)
+          : {},
       };
     },
   };

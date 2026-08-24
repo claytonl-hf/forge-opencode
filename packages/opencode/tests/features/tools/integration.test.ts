@@ -5,10 +5,15 @@ import { describe, expect, test, vi } from "vitest";
 import type { Config } from "#platform/config";
 
 import { ToolsIntegration } from "#features/tools/integration";
+import { createPluginStore } from "#plugin/store";
 
 async function configHook(forge: Forge) {
   // SAFETY: ToolsIntegration does not inspect options.
-  const integration = await ToolsIntegration(forge, {} as never);
+  const integration = await ToolsIntegration({
+    forge,
+    options: {} as never,
+    store: createPluginStore(forge),
+  });
   // SAFETY: the tools server adapter does not inspect its PluginInput argument.
   return (await integration.server!({} as never)).config!;
 }

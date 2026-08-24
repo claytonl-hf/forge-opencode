@@ -1,3 +1,5 @@
+import type { PluginStore } from "#plugin/store";
+
 import {
   modelForSession,
   PROFILE_METADATA_KEY,
@@ -6,41 +8,8 @@ import {
   type SessionMetadata,
 } from "./profile";
 
-let pendingProfile: string | null | undefined;
-type PendingProfileListener = (value: string | null | undefined) => void;
-const pendingProfileListeners = new Set<PendingProfileListener>();
-
-function notifyPendingProfile() {
-  for (const listener of pendingProfileListeners) listener(pendingProfile);
-}
-
-export function writePendingProfile(name: string | null): void {
-  pendingProfile = name;
-  notifyPendingProfile();
-}
-
-export function clearPendingProfile(): void {
-  pendingProfile = undefined;
-  notifyPendingProfile();
-}
-
-export function takePendingProfile(): string | null | undefined {
-  const value = pendingProfile;
-  pendingProfile = undefined;
-  notifyPendingProfile();
-  return value;
-}
-
-export function peekPendingProfile(): string | null | undefined {
-  return pendingProfile;
-}
-
-export function subscribePendingProfile(listener: PendingProfileListener): () => void {
-  pendingProfileListeners.add(listener);
-  return () => pendingProfileListeners.delete(listener);
-}
-
-export async function applyPendingProfile(input: {
+export async function applySessionProfile(input: {
+  store: PluginStore;
   sessionID: string;
   parentID?: string;
   agent?: string;
@@ -50,13 +19,12 @@ export async function applyPendingProfile(input: {
 }): Promise<void> {
   if (input.parentID) return;
 
-  const name = takePendingProfile();
+  const name = input.store.session.get();
   if (name == null || name === "") return;
 
   try {
     await input.update(input.sessionID, { [PROFILE_METADATA_KEY]: name });
   } catch {
-    writePendingProfile(name);
     return;
   }
 
@@ -64,11 +32,12 @@ export async function applyPendingProfile(input: {
     const model = modelForSession(input.profiles[name], input.agent);
     if (model) await input.switchModel(input.sessionID, model);
   } catch {
-    // The session is already stamped; do not restore the pending profile.
+    // The session is already stamped; leave the session profile unchanged.
   }
 }
 
 export async function onTuiSessionCreated(input: {
+  store: PluginStore;
   sessionID: string;
   parentID?: string;
   agent?: string;
@@ -79,7 +48,7 @@ export async function onTuiSessionCreated(input: {
   switchModel(sessionID: string, model: ForgeModelRef): Promise<void>;
 }): Promise<void> {
   if (!input.parentID) {
-    await applyPendingProfile(input);
+    await applySessionProfile(input);
     return;
   }
 

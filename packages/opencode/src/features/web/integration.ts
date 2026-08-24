@@ -1,9 +1,7 @@
+import type { PluginContext } from "#plugin/context";
 import type { Integration } from "#plugin/integrations/types";
 
-export async function WebIntegration(
-  forge: Parameters<Integration>[0],
-  options: Parameters<Integration>[1],
-): ReturnType<Integration> {
+export async function WebIntegration({ forge, options }: PluginContext): ReturnType<Integration> {
   return {
     tui: async (api) => {
       const [{ bridge }, { WebCommand }, { WebSlot }, { isComponentEnabled }] = await Promise.all([

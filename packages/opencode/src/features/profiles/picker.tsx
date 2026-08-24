@@ -511,11 +511,11 @@ export function visibleProfileTitle(
 }
 
 export function visibleHomeProfileTitle(
-  pendingProfile: string | null | undefined,
+  sessionProfile: string | null | undefined,
   globalProfile: string | undefined,
   profiles: Record<string, Profile> | undefined,
 ): string | undefined {
-  return visibleProfileTitle(undefined, undefined, pendingProfile || globalProfile, profiles);
+  return visibleProfileTitle(undefined, undefined, sessionProfile || globalProfile, profiles);
 }
 
 export function filterOptions<Value>(options: SelectOption<Value>[], query: string) {

@@ -5,16 +5,18 @@ import { describe, expect, test } from "vitest";
 
 import { ProfileIntegration } from "#features/profiles/integration";
 import { ForgeOptions, type UseForgeOptions } from "#plugin/options";
+import { createPluginStore } from "#plugin/store";
+import { createEmptyPluginStore } from "#tests/plugin/fakes";
 
 describe("profile integration", () => {
   test("keeps the profile command and contributes both prompt slots", async () => {
     const options = { value: ForgeOptions.parse({}) };
-    const integration = await ProfileIntegration(
-      // SAFETY: this focused TUI fake provides only the provider used during setup.
-      { provider: async () => undefined } as never,
-      // SAFETY: this focused options fake provides the parsed value used during setup.
-      options as never,
-    );
+    // SAFETY: this focused fake provides only the provider and parsed options used during setup.
+    const integration = await ProfileIntegration({
+      forge: { provider: async () => undefined } as never,
+      options: options as never,
+      store: createEmptyPluginStore(),
+    });
     // SAFETY: this focused TUI fake provides only the event and session state used during setup.
     const contribution = await integration.tui!({
       event: { on: () => () => {} },
@@ -30,12 +32,12 @@ describe("profile integration", () => {
     const options = {
       value: ForgeOptions.parse({ tui: { components: { profile: false } } }),
     };
-    const integration = await ProfileIntegration(
-      // SAFETY: this focused TUI fake provides only the provider used during setup.
-      { provider: async () => undefined } as never,
-      // SAFETY: this focused options fake provides the parsed value used during setup.
-      options as never,
-    );
+    // SAFETY: this focused fake provides only the provider and parsed options used during setup.
+    const integration = await ProfileIntegration({
+      forge: { provider: async () => undefined } as never,
+      options: options as never,
+      store: createEmptyPluginStore(),
+    });
     // SAFETY: this focused TUI fake provides only the event used during setup.
     const contribution = await integration.tui!({ event: { on: () => () => {} } } as never);
 
@@ -64,7 +66,11 @@ describe("profile integration", () => {
         },
       }),
     } as UseForgeOptions;
-    const integration = await ProfileIntegration(forge, options);
+    const integration = await ProfileIntegration({
+      forge,
+      options,
+      store: createPluginStore(forge),
+    });
     // SAFETY: this focused PluginInput fake provides the v1 session methods and server URL
     // required to build the profile hook adapter; this test only invokes the config hook.
     const hooks = await integration.server!({
@@ -133,7 +139,11 @@ describe("profile integration", () => {
         },
       }),
     } as UseForgeOptions;
-    const integration = await ProfileIntegration(forge, options);
+    const integration = await ProfileIntegration({
+      forge,
+      options,
+      store: createPluginStore(forge),
+    });
     // SAFETY: this focused PluginInput fake provides the v1 session methods and server URL
     // required to build the profile hook adapter; this test only invokes the config hook.
     const hooks = await integration.server!({

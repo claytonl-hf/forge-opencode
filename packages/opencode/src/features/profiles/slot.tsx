@@ -6,38 +6,53 @@ import { Show, createSignal, onCleanup, onMount, type Accessor } from "solid-js"
 
 import type { TuiSlots } from "#plugin/integrations/types";
 import type { UseForgeOptions } from "#plugin/options";
+import type { PluginStore } from "#plugin/store";
 
-import { peekPendingProfile, subscribePendingProfile } from "./pending";
 import { visibleHomeProfileTitle, visibleProfileTitle } from "./picker";
 
 type Props = TuiSlotContext & {
   api: TuiPluginApi;
   options: UseForgeOptions;
+  store: PluginStore;
   sessionID?: string;
 };
 
-export function ProfileSlots(api: TuiPluginApi, options: UseForgeOptions): TuiSlots {
+export function ProfileSlots(
+  api: TuiPluginApi,
+  options: UseForgeOptions,
+  store: PluginStore,
+): TuiSlots {
   return {
     session_prompt_right: (context, props) => (
-      <ProfileSlot api={api} options={options} theme={context.theme} sessionID={props.session_id} />
+      <ProfileSlot
+        api={api}
+        options={options}
+        store={store}
+        theme={context.theme}
+        sessionID={props.session_id}
+      />
     ),
     home_prompt_right: (context) => (
-      <ProfileSlot api={api} options={options} theme={context.theme} />
+      <ProfileSlot api={api} options={options} store={store} theme={context.theme} />
     ),
   };
 }
 
-function ProfileSlot({ api, options, theme, sessionID }: Props) {
+function ProfileSlot({ api, options, store, theme, sessionID }: Props) {
   const initialSession = sessionID ? api.state.session.get(sessionID) : undefined;
   const [session, setSession] = createSignal(initialSession);
   const [parent, setParent] = createSignal(
     initialSession?.parentID ? api.state.session.get(initialSession.parentID) : undefined,
   );
-  const [pending, setPending] = createSignal(peekPendingProfile());
+  const [sessionProfile, updateSessionProfile] = createSignal(store.session.get());
 
   function currentTitle() {
     if (!sessionID) {
-      return visibleHomeProfileTitle(pending(), options.value.profile, options.value.profiles);
+      return visibleHomeProfileTitle(
+        sessionProfile(),
+        options.value.profile,
+        options.value.profiles,
+      );
     }
     return visibleProfileTitle(session(), parent(), options.value.profile, options.value.profiles);
   }
@@ -49,7 +64,7 @@ function ProfileSlot({ api, options, theme, sessionID }: Props) {
 
   onMount(() => {
     if (!sessionID) {
-      const dispose = subscribePendingProfile(setPending);
+      const dispose = store.session.listen(updateSessionProfile);
       onCleanup(dispose);
       return;
     }

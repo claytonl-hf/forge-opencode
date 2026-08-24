@@ -1,4 +1,3 @@
-import type Forge from "@forge/core";
 import type { ForgeUsage } from "@forge/core";
 import type { TuiPluginApi } from "@opencode-ai/plugin/tui";
 
@@ -6,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { startUsageGateDialog } from "#features/usage/dialog";
 import { dialogTitle, THRESHOLD_USD } from "#features/usage/gate";
+import { createPluginStore } from "#plugin/store";
 
 import { catalog, stub, usage } from "./usage-fixtures";
 
@@ -25,24 +25,23 @@ type PromptResult = { value: string };
 type Prompt = (input: { sessionID: string }) => Promise<PromptResult>;
 type SessionModel = { id: string; providerID: string };
 
-function createForge(snapshots: ForgeUsage | null | undefined | (ForgeUsage | null | undefined)[]) {
+function createStore(
+  snapshots: ForgeUsage | null | undefined | (ForgeUsage | null | undefined)[],
+  models = catalog({}),
+) {
   const values = Array.isArray(snapshots) ? snapshots : [snapshots];
   let index = 0;
   const usageCall = stub(async () => values[Math.min(index++, values.length - 1)]);
   // SAFETY: This focused Forge fake implements the only method used by the usage gate handler.
-  return {
-    usage: () => usageCall.fn(),
-  } as Pick<Forge, "usage">;
+  return createPluginStore({ models: async () => models, usage: () => usageCall.fn() });
 }
 
-function createThrowingForge() {
+function createThrowingStore() {
   const usageCall = stub(async () => {
     throw new Error("usage unavailable");
   });
   // SAFETY: This focused Forge fake only exercises the usage failure path.
-  return {
-    usage: () => usageCall.fn(),
-  } as Pick<Forge, "usage">;
+  return createPluginStore({ models: async () => catalog({}), usage: () => usageCall.fn() });
 }
 
 function createTui(
@@ -183,15 +182,15 @@ describe("usage gate dialogs", () => {
       sessionModel: { id: "pareto", providerID: "forge" },
       sessionPrompt: () => Promise.reject(rejection),
     });
-    const forge = createForge(usage(THRESHOLD_USD));
-    startUsageGateDialog(
-      tui.api,
-      forge,
+    const store = createStore(
+      usage(THRESHOLD_USD),
       catalog(
         { pareto: "mid", lite: "low", nano: "low" },
         { pareto: "Pareto", lite: "Lite", nano: "Nano" },
       ),
     );
+    await store.models.refresh();
+    startUsageGateDialog(tui.api, store);
 
     await expect(sessionPrompt(tui)).rejects.toBe(rejection);
     await settle();
@@ -215,12 +214,12 @@ describe("usage gate dialogs", () => {
       sessionModel: { id: "pareto", providerID: "forge" },
       clientSessionModel: { id: "lite", providerID: "forge" },
     });
-    const forge = createForge(usage(THRESHOLD_USD));
-    startUsageGateDialog(
-      tui.api,
-      forge,
+    const store = createStore(
+      usage(THRESHOLD_USD),
       catalog({ pareto: "mid", lite: "low" }, { pareto: "Pareto", lite: "Lite" }),
     );
+    await store.models.refresh();
+    startUsageGateDialog(tui.api, store);
 
     await sessionPrompt(tui);
     await settle();
@@ -236,8 +235,9 @@ describe("usage gate dialogs", () => {
 
   test("does not dialog or interrupt a blocked non-Forge prompt", async () => {
     const tui = createTui({ sessionModel: { id: "gpt", providerID: "openai" } });
-    const forge = createForge(usage(THRESHOLD_USD));
-    startUsageGateDialog(tui.api, forge, catalog({ "high-model": "high" }));
+    const store = createStore(usage(THRESHOLD_USD), catalog({ "high-model": "high" }));
+    await store.models.refresh();
+    startUsageGateDialog(tui.api, store);
 
     await sessionPrompt(tui);
     await settle();
@@ -257,12 +257,12 @@ describe("usage gate dialogs", () => {
       },
       children: { session: ["child"], child: [] },
     });
-    const forge = createForge(usage(THRESHOLD_USD));
-    startUsageGateDialog(
-      tui.api,
-      forge,
+    const store = createStore(
+      usage(THRESHOLD_USD),
       catalog({ lite: "low", pareto: "high" }, { lite: "Lite", pareto: "Pareto" }),
     );
+    await store.models.refresh();
+    startUsageGateDialog(tui.api, store);
 
     await sessionPrompt(tui);
     await settle();
@@ -277,8 +277,9 @@ describe("usage gate dialogs", () => {
   test("wraps v2 prompts and preserves the original fulfilled result", async () => {
     const returned = Promise.resolve({ value: "sentinel" });
     const tui = createTui({ v2SessionPrompt: () => returned });
-    const forge = createForge(usage(THRESHOLD_USD));
-    startUsageGateDialog(tui.api, forge, catalog({ "high-model": "high" }));
+    const store = createStore(usage(THRESHOLD_USD), catalog({ "high-model": "high" }));
+    await store.models.refresh();
+    startUsageGateDialog(tui.api, store);
 
     const result = v2SessionPrompt(tui);
     expect(result).toBe(returned);
@@ -293,7 +294,9 @@ describe("usage gate dialogs", () => {
 
   test("fails open when usage lookup throws", async () => {
     const tui = createTui();
-    startUsageGateDialog(tui.api, createThrowingForge(), catalog({ "high-model": "high" }));
+    const store = createThrowingStore();
+    await store.models.refresh();
+    startUsageGateDialog(tui.api, store);
 
     await sessionPrompt(tui);
     await settle();
@@ -305,8 +308,9 @@ describe("usage gate dialogs", () => {
 
   test("does not show a dialog above the usage threshold", async () => {
     const tui = createTui();
-    const forge = createForge(usage(THRESHOLD_USD + 0.01));
-    startUsageGateDialog(tui.api, forge, catalog({ "high-model": "high" }));
+    const store = createStore(usage(THRESHOLD_USD + 0.01), catalog({ "high-model": "high" }));
+    await store.models.refresh();
+    startUsageGateDialog(tui.api, store);
 
     await sessionPrompt(tui);
     await settle();
@@ -324,8 +328,9 @@ describe("usage gate dialogs", () => {
     });
     const originalPrompt = tui.client.session.prompt;
     const originalV2Prompt = tui.client.v2.session.prompt;
-    const forge = createForge(usage(THRESHOLD_USD));
-    startUsageGateDialog(tui.api, forge, catalog({ "high-model": "high" }));
+    const store = createStore(usage(THRESHOLD_USD), catalog({ "high-model": "high" }));
+    await store.models.refresh();
+    startUsageGateDialog(tui.api, store);
 
     await expect(sessionPrompt(tui)).rejects.toBe(rejection);
     await settle();

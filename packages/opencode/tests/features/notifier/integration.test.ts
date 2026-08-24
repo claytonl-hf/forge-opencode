@@ -8,6 +8,7 @@ import {
   NotifierIntegration,
   type DoneNotifierPayload,
 } from "#features/notifier/integration";
+import { createEmptyPluginStore } from "#tests/plugin/fakes";
 
 const temporaryDirectories: string[] = [];
 
@@ -77,7 +78,11 @@ describe("done notifier integration", () => {
     const options = { value: { tui: { notify: true } } };
 
     // SAFETY: the focused fakes provide the Forge and option values used by the notifier.
-    const integration = await NotifierIntegration(forge as never, options as never);
+    const integration = await NotifierIntegration({
+      forge: forge as never,
+      options: options as never,
+      store: createEmptyPluginStore(),
+    });
     // SAFETY: the fake implements the event, lifecycle, and session APIs used by the notifier.
     await integration.tui!(api as never);
     idleHandler?.({ properties: { sessionID: "session-2" } });
@@ -115,7 +120,11 @@ describe("done notifier integration", () => {
     const options = { value: { tui: { notify: true } } };
 
     // SAFETY: these focused fakes implement only the Forge, options, and TUI APIs used here.
-    const integration = await NotifierIntegration(forge as never, options as never);
+    const integration = await NotifierIntegration({
+      forge: forge as never,
+      options: options as never,
+      store: createEmptyPluginStore(),
+    });
     // SAFETY: this TUI fake implements every API member notifier setup reads.
     await integration.tui!(api as never);
 
@@ -134,10 +143,11 @@ describe("done notifier integration", () => {
   test("does not register the notifier when disabled", async () => {
     const forge = { opencode: vi.fn(async () => ({ bridge: { notifier: "/tmp/notifier" } })) };
     // SAFETY: disabled setup reads only the supplied tui.notify option and no TUI API members.
-    const integration = await NotifierIntegration(
-      forge as never,
-      { value: { tui: { notify: false } } } as never,
-    );
+    const integration = await NotifierIntegration({
+      forge: forge as never,
+      options: { value: { tui: { notify: false } } } as never,
+      store: createEmptyPluginStore(),
+    });
 
     // SAFETY: disabled setup returns before reading any TUI API members.
     expect(await integration.tui!({} as never)).toEqual({});
@@ -155,10 +165,11 @@ describe("done notifier integration", () => {
         renderer: { on: vi.fn(() => {}), off: vi.fn(() => {}) },
       };
       // SAFETY: the focused fakes implement every Forge, option, and TUI API used during setup.
-      const integration = await NotifierIntegration(
-        forge as never,
-        { value: { tui: { notify: false } } } as never,
-      );
+      const integration = await NotifierIntegration({
+        forge: forge as never,
+        options: { value: { tui: { notify: false } } } as never,
+        store: createEmptyPluginStore(),
+      });
       // SAFETY: notifier setup reads only the event, lifecycle, and renderer members provided.
       await integration.tui!(api as never);
 

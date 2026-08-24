@@ -4,12 +4,13 @@ import { createForge } from "@forge/core";
 
 import { useIntegrations } from "#plugin/integrations/registry";
 import { useForgeOptions } from "#plugin/options";
+import { createPluginStore } from "#plugin/store";
 
 export async function server(input: Parameters<Plugin>[0]): ReturnType<Plugin> {
   const { client, directory } = input;
   try {
     const [forge, options] = await Promise.all([createForge(), useForgeOptions(directory)]);
-    const integrations = await useIntegrations(forge, options);
+    const integrations = await useIntegrations({ forge, options, store: createPluginStore(forge) });
 
     return integrations.server(input);
   } catch (error) {

@@ -1,18 +1,10 @@
 import type { TuiPluginApi } from "@opencode-ai/plugin/tui";
 import type { Session } from "@opencode-ai/sdk";
 
-import { describe, expect, test } from "vitest";
+import { beforeEach, describe, expect, test } from "vitest";
 
 import { ProfileCommand, saveEditedProfile, saveProfile } from "#features/profiles/command";
-import {
-  applyPendingProfile,
-  clearPendingProfile,
-  onTuiSessionCreated,
-  peekPendingProfile,
-  subscribePendingProfile,
-  takePendingProfile,
-  writePendingProfile,
-} from "#features/profiles/pending";
+import { applySessionProfile, onTuiSessionCreated } from "#features/profiles/pending";
 import {
   DesktopProfile,
   filterOptions,
@@ -33,6 +25,12 @@ import {
 } from "#features/profiles/profile";
 import { createProfileSessionHooks, type ProfileSessionClient } from "#features/profiles/session";
 import { ForgeOptions, type UseForgeOptions } from "#plugin/options";
+import { createEmptyPluginStore } from "#tests/plugin/fakes";
+
+let store: ReturnType<typeof createEmptyPluginStore>;
+beforeEach(() => {
+  store = createEmptyPluginStore();
+});
 
 type ProfileSessionRecord = Session & {
   agent?: string;
@@ -153,7 +151,7 @@ describe("profile session helpers", () => {
     expect(visibleProfileTitle(undefined, undefined, "global", profiles)).toBe("global");
   });
 
-  test("prefers a pending home profile title over the global profile", () => {
+  test("prefers a session profile title over the global profile", () => {
     expect(visibleHomeProfileTitle("balanced", "global", profiles)).toBe("Balanced");
     expect(visibleHomeProfileTitle(undefined, "global", profiles)).toBe("global");
     expect(visibleHomeProfileTitle(null, "global", profiles)).toBe("global");
@@ -180,33 +178,33 @@ describe("profile session helpers", () => {
   });
 });
 
-describe("pending profile subscriptions", () => {
-  test("notifies subscribers when pending state changes and stops after unsubscribe", () => {
-    clearPendingProfile();
+describe("session profile subscriptions", () => {
+  test("notifies listeners when session state changes and stops after unsubscribe", () => {
+    store.session.set(undefined);
     const values: Array<string | null | undefined> = [];
-    const unsubscribe = subscribePendingProfile((value) => values.push(value));
+    const unsubscribe = store.session.listen((value) => values.push(value));
 
     try {
-      writePendingProfile("balanced");
-      clearPendingProfile();
-      writePendingProfile("pending");
-      expect(takePendingProfile()).toBe("pending");
+      store.session.set("balanced");
+      store.session.set(undefined);
+      store.session.set("session");
+      expect(store.session.get()).toBe("session");
 
-      expect(values).toEqual(["balanced", undefined, "pending", undefined]);
+      expect(values).toEqual(["balanced", undefined, "session"]);
 
       unsubscribe();
-      writePendingProfile("ignored");
-      expect(values).toEqual(["balanced", undefined, "pending", undefined]);
+      store.session.set("ignored");
+      expect(values).toEqual(["balanced", undefined, "session"]);
     } finally {
       unsubscribe();
-      clearPendingProfile();
+      store.session.set(undefined);
     }
   });
 });
 
 describe("profile session hooks", () => {
-  test("inherits a parent profile through the TUI and leaves pending untouched", async () => {
-    clearPendingProfile();
+  test("inherits a parent profile through the TUI and leaves session profile untouched", async () => {
+    store.session.set(undefined);
     const sessions = {
       parent: {
         id: "parent",
@@ -232,8 +230,9 @@ describe("profile session hooks", () => {
     const updates: Array<{ sessionID: string; metadata: SessionMetadata }> = [];
     const switches: SessionSwitchModelInput[] = [];
     try {
-      writePendingProfile("pending");
+      store.session.set("session");
       await onTuiSessionCreated({
+        store,
         sessionID: sessions.child.id,
         parentID: sessions.child.parentID,
         agent: sessions.child.agent,
@@ -266,19 +265,20 @@ describe("profile session hooks", () => {
           model: { id: "reviewer", providerID: "forge", variant: "high" },
         },
       ]);
-      expect(peekPendingProfile()).toBe("pending");
+      expect(store.session.get()).toBe("session");
     } finally {
-      clearPendingProfile();
+      store.session.set(undefined);
     }
   });
 
-  test("applies a pending profile to a top-level session and consumes it", async () => {
-    clearPendingProfile();
+  test("applies a session profile to a top-level session and leaves it unchanged", async () => {
+    store.session.set(undefined);
     try {
-      writePendingProfile("balanced");
+      store.session.set("balanced");
       const updates: Array<{ sessionID: string; metadata: SessionMetadata }> = [];
       const switches: SessionSwitchModelInput[] = [];
-      await applyPendingProfile({
+      await applySessionProfile({
+        store,
         sessionID: "top-level",
         agent: "reviewer",
         profiles: {
@@ -306,18 +306,19 @@ describe("profile session hooks", () => {
           model: { id: "reviewer", providerID: "forge", variant: "high" },
         },
       ]);
-      expect(peekPendingProfile()).toBeUndefined();
+      expect(store.session.get()).toBe("balanced");
     } finally {
-      clearPendingProfile();
+      store.session.set(undefined);
     }
   });
 
-  test("leaves pending profile for child sessions", async () => {
-    clearPendingProfile();
+  test("leaves session profile for child sessions", async () => {
+    store.session.set(undefined);
     try {
-      writePendingProfile("balanced");
+      store.session.set("balanced");
       const updates: Array<{ sessionID: string; metadata: SessionMetadata }> = [];
-      await applyPendingProfile({
+      await applySessionProfile({
+        store,
         sessionID: "child",
         parentID: "parent",
         profiles: {
@@ -329,22 +330,23 @@ describe("profile session hooks", () => {
           updates.push({ sessionID, metadata });
         },
         switchModel: async () => {
-          throw new Error("child sessions must not switch from pending state");
+          throw new Error("child sessions must not switch from session state");
         },
       });
 
       expect(updates).toHaveLength(0);
-      expect(peekPendingProfile()).toBe("balanced");
+      expect(store.session.get()).toBe("balanced");
     } finally {
-      clearPendingProfile();
+      store.session.set(undefined);
     }
   });
 
-  test("restores a pending profile when applying its metadata fails", async () => {
-    clearPendingProfile();
+  test("leaves a session profile when applying its metadata fails", async () => {
+    store.session.set(undefined);
     try {
-      writePendingProfile("balanced");
-      await applyPendingProfile({
+      store.session.set("balanced");
+      await applySessionProfile({
+        store,
         sessionID: "top-level",
         profiles: { balanced: Profile.parse({ models: {} }) },
         update: async () => {
@@ -353,17 +355,18 @@ describe("profile session hooks", () => {
         switchModel: async () => {},
       });
 
-      expect(peekPendingProfile()).toBe("balanced");
+      expect(store.session.get()).toBe("balanced");
     } finally {
-      clearPendingProfile();
+      store.session.set(undefined);
     }
   });
 
-  test("consumes a pending profile when switching its model fails", async () => {
-    clearPendingProfile();
+  test("leaves a session profile when switching its model fails", async () => {
+    store.session.set(undefined);
     try {
-      writePendingProfile("balanced");
-      await applyPendingProfile({
+      store.session.set("balanced");
+      await applySessionProfile({
+        store,
         sessionID: "top-level",
         agent: "reviewer",
         profiles: {
@@ -377,9 +380,9 @@ describe("profile session hooks", () => {
         },
       });
 
-      expect(peekPendingProfile()).toBeUndefined();
+      expect(store.session.get()).toBe("balanced");
     } finally {
-      clearPendingProfile();
+      store.session.set(undefined);
     }
   });
 
@@ -463,7 +466,7 @@ describe("ProfileCommand", () => {
     };
     const api = createSaveApi(session, sessionUpdates, switches);
 
-    await saveProfile("balanced", ProfileScope.Session, { api, options, profiles });
+    await saveProfile("balanced", ProfileScope.Session, { api, options, profiles, store });
 
     expect(options.value.profile).toBe("existing");
     expect(sessionUpdates).toEqual([
@@ -477,8 +480,8 @@ describe("ProfileCommand", () => {
     ]);
   });
 
-  test("clears a pending profile before a failed in-session model switch", async () => {
-    clearPendingProfile();
+  test("replaces a session profile before a failed in-session model switch", async () => {
+    store.session.set(undefined);
     try {
       const profiles = {
         balanced: Profile.parse({ models: { $default: { id: "default" } } }),
@@ -495,17 +498,17 @@ describe("ProfileCommand", () => {
         time: { created: 1, updated: 1 },
         metadata: {},
       };
-      writePendingProfile("stale");
+      store.session.set("stale");
       const api = createSaveApi(session, sessionUpdates, switches, "/tmp", true);
 
-      await saveProfile("balanced", ProfileScope.Session, { api, options, profiles });
+      await saveProfile("balanced", ProfileScope.Session, { api, options, profiles, store });
 
       expect(sessionUpdates).toEqual([
         { sessionID: "session", metadata: { [PROFILE_METADATA_KEY]: "balanced" } },
       ]);
-      expect(peekPendingProfile()).toBeUndefined();
+      expect(store.session.get()).toBe("balanced");
     } finally {
-      clearPendingProfile();
+      store.session.set(undefined);
     }
   });
 
@@ -527,7 +530,7 @@ describe("ProfileCommand", () => {
     };
     const api = createSaveApi(session, sessionUpdates, switches);
 
-    await saveProfile("balanced", ProfileScope.Global, { api, options, profiles });
+    await saveProfile("balanced", ProfileScope.Global, { api, options, profiles, store });
 
     expect(options.value.profile).toBe("balanced");
     expect(sessionUpdates).toEqual([
@@ -557,12 +560,18 @@ describe("ProfileCommand", () => {
     };
     const api = createSaveApi(session, sessionUpdates, switches);
 
-    await saveProfile(null, ProfileScope.Session, { api, options, profiles });
+    store.session.set("stale");
+    try {
+      await saveProfile(null, ProfileScope.Session, { api, options, profiles, store });
 
-    expect(options.value.profile).toBe("existing");
-    expect(options.writes).toHaveLength(0);
-    expect(sessionUpdates).toEqual([{ sessionID: "session", metadata: {} }]);
-    expect(switches).toHaveLength(0);
+      expect(options.value.profile).toBe("existing");
+      expect(options.writes).toHaveLength(0);
+      expect(sessionUpdates).toEqual([{ sessionID: "session", metadata: {} }]);
+      expect(switches).toHaveLength(0);
+      expect(store.session.get()).toBeNull();
+    } finally {
+      store.session.set(undefined);
+    }
   });
 
   test("selects Desktop for this session without changing the global profile", async () => {
@@ -581,12 +590,18 @@ describe("ProfileCommand", () => {
     };
     const api = createSaveApi(session, sessionUpdates, switches);
 
-    await saveProfile(DesktopProfile, ProfileScope.Session, { api, options, profiles });
+    store.session.set("stale");
+    try {
+      await saveProfile(DesktopProfile, ProfileScope.Session, { api, options, profiles, store });
 
-    expect(options.value.profile).toBe("existing");
-    expect(options.writes).toHaveLength(0);
-    expect(sessionUpdates).toEqual([{ sessionID: "session", metadata: {} }]);
-    expect(switches).toHaveLength(0);
+      expect(options.value.profile).toBe("existing");
+      expect(options.writes).toHaveLength(0);
+      expect(sessionUpdates).toEqual([{ sessionID: "session", metadata: {} }]);
+      expect(switches).toHaveLength(0);
+      expect(store.session.get()).toBeNull();
+    } finally {
+      store.session.set(undefined);
+    }
   });
 
   test("clears the global profile and the current session pin", async () => {
@@ -605,7 +620,7 @@ describe("ProfileCommand", () => {
     };
     const api = createSaveApi(session, sessionUpdates, switches);
 
-    await saveProfile(null, ProfileScope.Global, { api, options, profiles });
+    await saveProfile(null, ProfileScope.Global, { api, options, profiles, store });
 
     expect(options.value.profile).toBeUndefined();
     expect(options.writes).toHaveLength(1);
@@ -629,7 +644,7 @@ describe("ProfileCommand", () => {
     };
     const api = createSaveApi(session, sessionUpdates, switches);
 
-    await saveProfile(DesktopProfile, ProfileScope.Global, { api, options, profiles });
+    await saveProfile(DesktopProfile, ProfileScope.Global, { api, options, profiles, store });
 
     expect(options.value.profile).toBe("default");
     expect(options.writes).toHaveLength(1);
@@ -637,8 +652,8 @@ describe("ProfileCommand", () => {
     expect(switches).toHaveLength(0);
   });
 
-  test("writes a pending profile without a session route", async () => {
-    clearPendingProfile();
+  test("writes a session profile without a session route", async () => {
+    store.session.set(undefined);
     try {
       const profiles = { balanced: Profile.parse({ models: {} }) };
       const options = createTestOptions(ForgeOptions.parse({ profile: "existing", profiles }));
@@ -648,39 +663,63 @@ describe("ProfileCommand", () => {
         route: { current: { name: "home" } },
       });
 
-      await saveProfile("balanced", ProfileScope.Session, { api, options, profiles });
+      await saveProfile("balanced", ProfileScope.Session, { api, options, profiles, store });
 
       expect(options.value.profile).toBe("existing");
       expect(options.writes).toHaveLength(0);
       expect(sessionUpdates).toHaveLength(0);
       expect(switches).toHaveLength(0);
-      expect(peekPendingProfile()).toBe("balanced");
+      expect(store.session.get()).toBe("balanced");
     } finally {
-      clearPendingProfile();
+      store.session.set(undefined);
     }
   });
 
-  test("writes a global profile and clears a pending profile without a session route", async () => {
-    clearPendingProfile();
+  test("clears a session profile without a session route", async () => {
+    store.session.set(undefined);
     try {
       const profiles = { balanced: Profile.parse({ models: {} }) };
       const options = createTestOptions(ForgeOptions.parse({ profile: "existing", profiles }));
       const sessionUpdates: CommandSessionUpdateInput[] = [];
       const switches: SessionSwitchModelInput[] = [];
-      writePendingProfile("stale");
+      store.session.set("stale");
       const api = Object.assign(createSaveApi(undefined, sessionUpdates, switches), {
         route: { current: { name: "home" } },
       });
 
-      await saveProfile("balanced", ProfileScope.Global, { api, options, profiles });
+      await saveProfile(null, ProfileScope.Session, { api, options, profiles, store });
+
+      expect(options.value.profile).toBe("existing");
+      expect(options.writes).toHaveLength(0);
+      expect(sessionUpdates).toHaveLength(0);
+      expect(switches).toHaveLength(0);
+      expect(store.session.get()).toBeNull();
+    } finally {
+      store.session.set(undefined);
+    }
+  });
+
+  test("writes a global profile and clears a session profile without a session route", async () => {
+    store.session.set(undefined);
+    try {
+      const profiles = { balanced: Profile.parse({ models: {} }) };
+      const options = createTestOptions(ForgeOptions.parse({ profile: "existing", profiles }));
+      const sessionUpdates: CommandSessionUpdateInput[] = [];
+      const switches: SessionSwitchModelInput[] = [];
+      store.session.set("stale");
+      const api = Object.assign(createSaveApi(undefined, sessionUpdates, switches), {
+        route: { current: { name: "home" } },
+      });
+
+      await saveProfile("balanced", ProfileScope.Global, { api, options, profiles, store });
 
       expect(options.value.profile).toBe("balanced");
       expect(options.writes).toHaveLength(1);
       expect(sessionUpdates).toHaveLength(0);
       expect(switches).toHaveLength(0);
-      expect(peekPendingProfile()).toBeUndefined();
+      expect(store.session.get()).toBeUndefined();
     } finally {
-      clearPendingProfile();
+      store.session.set(undefined);
     }
   });
 
@@ -695,7 +734,7 @@ describe("ProfileCommand", () => {
       route: { current: { name: "home" } },
     });
 
-    await saveProfile("balanced", ProfileScope.Global, { api, options, profiles });
+    await saveProfile("balanced", ProfileScope.Global, { api, options, profiles, store });
 
     expect(options.value.profile).toBe("balanced");
     expect(options.writes).toHaveLength(1);
@@ -749,7 +788,7 @@ describe("ProfileCommand", () => {
         return ForgeOptions.parse({});
       },
     } as UseForgeOptions;
-    const command = ProfileCommand(api, options);
+    const command = ProfileCommand(api, options, store);
 
     // SAFETY: ProfileCommand does not inspect its invocation argument.
     await command.run({} as never);
