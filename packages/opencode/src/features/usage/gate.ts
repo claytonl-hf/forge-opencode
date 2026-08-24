@@ -2,7 +2,12 @@ import type { ForgeModelCostTier, ForgeModels, ForgeUsage } from "@forge/core";
 
 import type { PluginStore } from "#plugin/store";
 
-export const THRESHOLD_USD = parseFloat(process.env.FORGE_USAGE_ALERT_BALANCE || "2");
+export const DEFAULT_THRESHOLD_USD = 2;
+
+export function parseThreshold(value?: string): number {
+  const threshold = value === undefined ? Number.NaN : parseFloat(value);
+  return Number.isFinite(threshold) && threshold > 0 ? threshold : DEFAULT_THRESHOLD_USD;
+}
 
 export const dialogTitle = "You are almost out of Forge credits";
 
@@ -36,14 +41,14 @@ export function dialogMessage(modelName: string, allowedNames: string[]): string
 
 export function shouldBlock(
   usage: ForgeUsage | null | undefined,
-  threshold = THRESHOLD_USD,
+  threshold = DEFAULT_THRESHOLD_USD,
 ): boolean {
   if (!usage) return false;
 
   return usage.budget.exhausted || usage.budget.remainingUsd <= threshold;
 }
 
-export function blockMessage(usage: ForgeUsage): string {
+export function blockMessage(usage: ForgeUsage, threshold = DEFAULT_THRESHOLD_USD): string {
   const reset = usage.budget.resetAt ? ` Reset at ${usage.budget.resetAt}.` : "";
-  return `Forge daily balance is $${usage.budget.remainingUsd.toFixed(2)}, at or below the $${THRESHOLD_USD.toFixed(2)} threshold. Forge would silently route this request to a floor model.${reset}`;
+  return `Forge daily balance is $${usage.budget.remainingUsd.toFixed(2)}, at or below the $${threshold.toFixed(2)} threshold. Forge would silently route this request to a floor model.${reset}`;
 }

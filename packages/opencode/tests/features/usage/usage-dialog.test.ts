@@ -4,7 +4,7 @@ import type { TuiPluginApi } from "@opencode-ai/plugin/tui";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { startUsageGateDialog } from "#features/usage/dialog";
-import { dialogTitle, THRESHOLD_USD } from "#features/usage/gate";
+import { DEFAULT_THRESHOLD_USD, dialogTitle } from "#features/usage/gate";
 import { createPluginStore } from "#plugin/store";
 
 import { catalog, stub, usage } from "./usage-fixtures";
@@ -183,7 +183,7 @@ describe("usage gate dialogs", () => {
       sessionPrompt: () => Promise.reject(rejection),
     });
     const store = createStore(
-      usage(THRESHOLD_USD),
+      usage(DEFAULT_THRESHOLD_USD),
       catalog(
         { pareto: "mid", lite: "low", nano: "low" },
         { pareto: "Pareto", lite: "Lite", nano: "Nano" },
@@ -215,7 +215,7 @@ describe("usage gate dialogs", () => {
       clientSessionModel: { id: "lite", providerID: "forge" },
     });
     const store = createStore(
-      usage(THRESHOLD_USD),
+      usage(DEFAULT_THRESHOLD_USD),
       catalog({ pareto: "mid", lite: "low" }, { pareto: "Pareto", lite: "Lite" }),
     );
     await store.models.refresh();
@@ -235,7 +235,7 @@ describe("usage gate dialogs", () => {
 
   test("does not dialog or interrupt a blocked non-Forge prompt", async () => {
     const tui = createTui({ sessionModel: { id: "gpt", providerID: "openai" } });
-    const store = createStore(usage(THRESHOLD_USD), catalog({ "high-model": "high" }));
+    const store = createStore(usage(DEFAULT_THRESHOLD_USD), catalog({ "high-model": "high" }));
     await store.models.refresh();
     startUsageGateDialog(tui.api, store);
 
@@ -258,7 +258,7 @@ describe("usage gate dialogs", () => {
       children: { session: ["child"], child: [] },
     });
     const store = createStore(
-      usage(THRESHOLD_USD),
+      usage(DEFAULT_THRESHOLD_USD),
       catalog({ lite: "low", pareto: "high" }, { lite: "Lite", pareto: "Pareto" }),
     );
     await store.models.refresh();
@@ -277,7 +277,7 @@ describe("usage gate dialogs", () => {
   test("wraps v2 prompts and preserves the original fulfilled result", async () => {
     const returned = Promise.resolve({ value: "sentinel" });
     const tui = createTui({ v2SessionPrompt: () => returned });
-    const store = createStore(usage(THRESHOLD_USD), catalog({ "high-model": "high" }));
+    const store = createStore(usage(DEFAULT_THRESHOLD_USD), catalog({ "high-model": "high" }));
     await store.models.refresh();
     startUsageGateDialog(tui.api, store);
 
@@ -308,7 +308,10 @@ describe("usage gate dialogs", () => {
 
   test("does not show a dialog above the usage threshold", async () => {
     const tui = createTui();
-    const store = createStore(usage(THRESHOLD_USD + 0.01), catalog({ "high-model": "high" }));
+    const store = createStore(
+      usage(DEFAULT_THRESHOLD_USD + 0.01),
+      catalog({ "high-model": "high" }),
+    );
     await store.models.refresh();
     startUsageGateDialog(tui.api, store);
 
@@ -328,7 +331,7 @@ describe("usage gate dialogs", () => {
     });
     const originalPrompt = tui.client.session.prompt;
     const originalV2Prompt = tui.client.v2.session.prompt;
-    const store = createStore(usage(THRESHOLD_USD), catalog({ "high-model": "high" }));
+    const store = createStore(usage(DEFAULT_THRESHOLD_USD), catalog({ "high-model": "high" }));
     await store.models.refresh();
     startUsageGateDialog(tui.api, store);
 

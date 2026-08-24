@@ -8,8 +8,9 @@ import {
   dialogTitle,
   getLowTierModels,
   isLowTierModel,
+  parseThreshold,
   shouldBlock,
-  THRESHOLD_USD,
+  DEFAULT_THRESHOLD_USD,
 } from "#features/usage/gate";
 import { createUsageSessionHooks } from "#features/usage/session";
 import { createPluginStore } from "#plugin/store";
@@ -26,6 +27,17 @@ function forgeWithUsage(snapshot: ForgeUsage | null | undefined, models = catalo
 }
 
 describe("usage gate", () => {
+  test.each([
+    [undefined, DEFAULT_THRESHOLD_USD],
+    ["", DEFAULT_THRESHOLD_USD],
+    ["not-a-number", DEFAULT_THRESHOLD_USD],
+    ["0", DEFAULT_THRESHOLD_USD],
+    ["-1", DEFAULT_THRESHOLD_USD],
+    ["3.5", 3.5],
+  ])("parses threshold %s", (value, threshold) => {
+    expect(parseThreshold(value)).toBe(threshold);
+  });
+
   test.each<[ForgeModelCostTier | undefined, boolean | undefined]>([
     ["mid", false],
     ["high", false],
@@ -93,7 +105,7 @@ describe("usage gate", () => {
     "%s throws when the balance gate blocks",
     async (modelID) => {
       const { store } = forgeWithUsage(
-        usage(THRESHOLD_USD),
+        usage(DEFAULT_THRESHOLD_USD),
         catalog({ "mid-model": "mid", "high-model": "high" }),
       );
       await store.models.refresh();
@@ -112,7 +124,10 @@ describe("usage gate", () => {
   );
 
   test("chat.params uses the input model id", async () => {
-    const { store } = forgeWithUsage(usage(THRESHOLD_USD), catalog({ "high-model": "high" }));
+    const { store } = forgeWithUsage(
+      usage(DEFAULT_THRESHOLD_USD),
+      catalog({ "high-model": "high" }),
+    );
     await store.models.refresh();
     const hooks = createUsageSessionHooks(store);
 
@@ -129,7 +144,7 @@ describe("usage gate", () => {
 
   test("chat.message prefers output.message.model over input.model", async () => {
     const { store } = forgeWithUsage(
-      usage(THRESHOLD_USD),
+      usage(DEFAULT_THRESHOLD_USD),
       catalog({ "input-model": "low", "output-model": "mid" }),
     );
     await store.models.refresh();
@@ -147,7 +162,7 @@ describe("usage gate", () => {
   });
 
   test("does not throw for a blocked low-tier target", async () => {
-    const { store } = forgeWithUsage(usage(THRESHOLD_USD), catalog({ "low-model": "low" }));
+    const { store } = forgeWithUsage(usage(DEFAULT_THRESHOLD_USD), catalog({ "low-model": "low" }));
     await store.models.refresh();
     const hooks = createUsageSessionHooks(store);
 
@@ -165,7 +180,10 @@ describe("usage gate", () => {
     ["missing catalog model", undefined],
     ["non-Forge provider", { providerID: "openai", modelID: "high-model" }],
   ])("does not throw for %s", async (_, model) => {
-    const { store } = forgeWithUsage(usage(THRESHOLD_USD), catalog({ "high-model": "high" }));
+    const { store } = forgeWithUsage(
+      usage(DEFAULT_THRESHOLD_USD),
+      catalog({ "high-model": "high" }),
+    );
     await store.models.refresh();
     const hooks = createUsageSessionHooks(store);
 

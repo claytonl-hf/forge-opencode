@@ -2,15 +2,18 @@ import type { Hooks } from "@opencode-ai/plugin";
 
 import type { PluginStore } from "#plugin/store";
 
-import { blockMessage, isLowTierModel, shouldBlock } from "./gate";
+import { blockMessage, isLowTierModel, parseThreshold, shouldBlock } from "./gate";
 
-export function createUsageSessionHooks(store: Pick<PluginStore, "usage" | "models">): Hooks {
+export function createUsageSessionHooks(
+  store: Pick<PluginStore, "env" | "usage" | "models">,
+): Hooks {
   const gate = async (modelID: string | undefined) => {
     if (isLowTierModel(store.models, modelID) !== false) return;
 
     const usage = await store.usage.refresh();
     if (!usage) return;
-    if (shouldBlock(usage)) throw new Error(blockMessage(usage));
+    const threshold = parseThreshold(store.env.FORGE_USAGE_ALERT_BALANCE);
+    if (shouldBlock(usage, threshold)) throw new Error(blockMessage(usage, threshold));
   };
 
   return {

@@ -2,7 +2,14 @@ import type { TuiPluginApi } from "@opencode-ai/plugin/tui";
 
 import type { PluginStore } from "#plugin/store";
 
-import { dialogMessage, dialogTitle, getLowTierModels, isLowTierModel, shouldBlock } from "./gate";
+import {
+  dialogMessage,
+  dialogTitle,
+  getLowTierModels,
+  isLowTierModel,
+  parseThreshold,
+  shouldBlock,
+} from "./gate";
 
 type UsageGateClient = TuiPluginApi["client"] & {
   session: TuiPluginApi["client"]["session"] & {
@@ -84,7 +91,7 @@ async function interruptBlockedSessions(
 
 export function startUsageGateDialog(
   api: TuiPluginApi,
-  store: Pick<PluginStore, "usage" | "models">,
+  store: Pick<PluginStore, "env" | "usage" | "models">,
 ): void {
   // SAFETY: The runtime TUI client exposes v1/v2 session prompt and interrupt methods with these shapes.
   const client = api.client as UsageGateClient;
@@ -121,7 +128,8 @@ export function startUsageGateDialog(
 
     try {
       const usage = await store.usage.refresh();
-      if (!usage || !shouldBlock(usage)) return;
+      const threshold = parseThreshold(store.env.FORGE_USAGE_ALERT_BALANCE);
+      if (!usage || !shouldBlock(usage, threshold)) return;
 
       const model = await resolveSessionModel(api, sessionID);
       await interruptBlockedSessions(api, client, store, sessionID, model);
