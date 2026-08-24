@@ -8,6 +8,7 @@ export type { ForgeAgent } from "./lib/resources/agents";
 export type { ForgeCommand } from "./lib/resources/commands";
 export type { ForgeEnvironment, ForgeEnvironmentVariables } from "./lib/api/env";
 export type { ForgeModel, ForgeModels } from "./lib/resources/models";
+export type { ForgeModelBand, ForgeModelCostTier, ForgeModelSpeedTier } from "./lib/api/models";
 export type { ForgeProvider } from "./lib/resources/provider";
 export type { ForgeUsage } from "./lib/resources/usage";
 

@@ -61,3 +61,7 @@ export const ModelsResponseSchema = z.looseObject({
   opencode: ForgeCatalogSchema,
   budget: BudgetSchema,
 });
+
+export type ForgeModelBand = z.infer<typeof ModelBandSchema>;
+export type ForgeModelCostTier = z.infer<typeof ModelCostTierSchema>;
+export type ForgeModelSpeedTier = z.infer<typeof ModelSpeedTierSchema>;
