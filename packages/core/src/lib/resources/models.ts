@@ -2,6 +2,7 @@ import { Models, type Model } from "@opencode-ai/models";
 import { z } from "zod";
 
 import { ForgeCatalogSchema } from "#lib/api/models";
+import { sortKeys } from "#lib/utils.ts";
 
 type ModelCatalog = z.infer<typeof ForgeCatalogSchema>;
 type ModelDefinition = ModelCatalog["models"][number];
@@ -86,7 +87,7 @@ export async function getModels(input: ModelDefinition[]): Promise<ForgeModels> 
     models[item.id] = model;
   }
 
-  return models;
+  return sortKeys(models);
 }
 
 export async function getModelsFromCatalog(catalog: ModelCatalog): Promise<ForgeModels> {
