@@ -44,17 +44,22 @@ function ProfileSlot({ api, options, store, theme, sessionID }: Props) {
   const [parent, setParent] = createSignal(
     initialSession?.parentID ? api.state.session.get(initialSession.parentID) : undefined,
   );
-  const [sessionProfile, updateSessionProfile] = createSignal(store.session.get());
+  const [sessionProfile, updateSessionProfile] = createSignal(store.session.profile.get());
 
   function currentTitle() {
     if (!sessionID) {
       return visibleHomeProfileTitle(
         sessionProfile(),
-        options.value.profile,
+        store.env.FORGE_PROFILE ?? options.value.profile,
         options.value.profiles,
       );
     }
-    return visibleProfileTitle(session(), parent(), options.value.profile, options.value.profiles);
+    return visibleProfileTitle(
+      session(),
+      parent(),
+      store.env.FORGE_PROFILE ?? options.value.profile,
+      options.value.profiles,
+    );
   }
 
   function open(event: { stopPropagation: () => void }) {
@@ -64,7 +69,7 @@ function ProfileSlot({ api, options, store, theme, sessionID }: Props) {
 
   onMount(() => {
     if (!sessionID) {
-      const dispose = store.session.listen(updateSessionProfile);
+      const dispose = store.session.profile.listen(updateSessionProfile);
       onCleanup(dispose);
       return;
     }

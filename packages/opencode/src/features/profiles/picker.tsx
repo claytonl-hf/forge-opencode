@@ -5,7 +5,9 @@ import type { JSX } from "@opentui/solid";
 import { RGBA, type ScrollBoxRenderable, TextAttributes } from "@opentui/core";
 import { createEffect, createMemo, createSignal, For, onCleanup, Show } from "solid-js";
 
-import { resolveProfileName, type Profile, type ProfileSessionMetadata } from "./profile";
+import type { ProfileSessionMetadata, SessionProfile } from "./profile";
+
+import { resolveProfileName, type Profile } from "./profile";
 
 export const DesktopProfile = Symbol("forge-desktop-profile");
 export type ProfileSelection = string | typeof DesktopProfile | null;
@@ -252,21 +254,21 @@ export function ModelPicker({
   api: TuiPluginApi;
   profileName: string;
   target: string;
-  models: Array<{ id: string; name: string; variants: string[] }>;
-  current?: { id: string; variant?: string | null };
-  onConfirm: (model?: { id: string; variant?: string }) => void;
+  models: Array<{ provider: string; id: string; name: string; variants: string[] }>;
+  current?: { id: string; provider?: string; variant?: string | null };
+  onConfirm: (model?: { id: string; provider?: string; variant?: string }) => void;
   onClose: () => void;
 }) {
-  const [selected, setSelected] = createSignal(current?.id ?? "");
+  const [selected, setSelected] = createSignal(current ? getModelKey(current) : "");
   const initialVariants: Record<string, string | undefined> = {};
-  if (current) initialVariants[current.id] = current.variant ?? undefined;
+  if (current) initialVariants[getModelKey(current)] = current.variant ?? undefined;
   const [variants, setVariants] = createSignal(initialVariants);
   const options = createMemo<SelectOption<string>[]>(() => [
     { title: "Not set", value: "", columns: true },
     ...models.map((model, index) => ({
       title: model.name,
-      value: model.id,
-      description: variants()[model.id] ?? "default",
+      value: getModelKey(model),
+      description: variants()[getModelKey(model)] ?? "default",
       columns: true,
       before:
         index === 0 ? (
@@ -286,7 +288,7 @@ export function ModelPicker({
 
   function cycle(value: string) {
     if (!value) return;
-    const model = models.find((item) => item.id === value);
+    const model = models.find((item) => getModelKey(item) === value);
     if (!model) return;
     const choices = [undefined, ...model.variants];
     const index = choices.indexOf(variants()[value]);
@@ -295,8 +297,11 @@ export function ModelPicker({
   }
 
   function confirm() {
-    const id = selected();
-    props.onConfirm(id ? { id, variant: variants()[id] } : undefined);
+    const key = selected();
+    const model = models.find((item) => getModelKey(item) === key);
+    props.onConfirm(
+      model ? { id: model.id, provider: model.provider, variant: variants()[key] } : undefined,
+    );
   }
 
   return (
@@ -511,11 +516,12 @@ export function visibleProfileTitle(
 }
 
 export function visibleHomeProfileTitle(
-  sessionProfile: string | null | undefined,
+  sessionProfile: SessionProfile,
   globalProfile: string | undefined,
   profiles: Record<string, Profile> | undefined,
 ): string | undefined {
-  return visibleProfileTitle(undefined, undefined, sessionProfile || globalProfile, profiles);
+  const sessionProfileID = sessionProfile?.id;
+  return visibleProfileTitle(undefined, undefined, sessionProfileID || globalProfile, profiles);
 }
 
 export function filterOptions<Value>(options: SelectOption<Value>[], query: string) {
@@ -549,8 +555,12 @@ function label(key: string) {
 
 function modelLabel(model: Profile["models"][string] | undefined, models: Record<string, string>) {
   if (!model) return "Not set";
-  const name = models[model.id] ?? model.id;
+  const name = models[getModelKey(model)] ?? model.id;
   return model.variant ? `${name}:${model.variant}` : name;
+}
+
+function getModelKey(model: { id: string; provider?: string }) {
+  return `${model.provider ?? "forge"}/${model.id}`;
 }
 
 function modelTargetLabel(key: string) {

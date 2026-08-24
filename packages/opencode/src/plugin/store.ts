@@ -1,18 +1,33 @@
 import type Forge from "@forge/core";
 import type { ForgeModel, ForgeModels } from "@forge/core";
 
+import type { SessionProfile } from "#features/profiles/profile";
+
 import { createPolledResource, createResource } from "#plugin/resource";
 
-type SessionProfile = string | null | undefined;
+export type PluginStoreEnv = {
+  FORGE_USAGE_ALERT_BALANCE?: string;
+  FORGE_PROFILE?: string;
+};
 
 type PluginModel = Pick<ForgeModel, "name" | "metadata">;
 
-export function createPluginStore(forge: Pick<Forge, "models" | "usage">) {
+export function createPluginStore(
+  forge: Pick<Forge, "models" | "usage">,
+  env: PluginStoreEnv = process.env,
+) {
   const catalog = createResource<ForgeModels>();
   const usage = createPolledResource(() => forge.usage());
+  const profile = createResource<SessionProfile>();
 
   return {
-    session: createResource<SessionProfile>(),
+    env: {
+      FORGE_USAGE_ALERT_BALANCE: env.FORGE_USAGE_ALERT_BALANCE,
+      FORGE_PROFILE: env.FORGE_PROFILE,
+    },
+    session: {
+      profile,
+    },
     models: {
       get: catalog.get,
       refresh: () => catalog.load(() => forge.models()),

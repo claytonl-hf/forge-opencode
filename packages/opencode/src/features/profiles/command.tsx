@@ -4,6 +4,7 @@ import type { Command } from "@opentui/keymap";
 
 import { createSignal } from "solid-js";
 
+import type { SessionMetadata } from "#common/session";
 import type { UseForgeOptions } from "#plugin/options";
 import type { PluginStore } from "#plugin/store";
 
@@ -20,7 +21,7 @@ import {
   resolveProfileSelection,
   serializeProfileSelection,
 } from "./picker";
-import { modelForSession, PROFILE_METADATA_KEY, setProfileModel } from "./profile";
+import { getModelForSession, getProfileMetadata, setProfileModel } from "./profile";
 
 export async function saveProfile(
   selection: ProfileSelection,
@@ -54,7 +55,7 @@ export async function saveProfile(
   const route = api.route.current;
   if (route.name !== "session") {
     if (scope === ProfileScope.Session) {
-      store.session.set(profileName ?? null);
+      store.session.profile.set(profileName ? { id: profileName } : null);
       api.ui.toast({
         variant: "success",
         title,
@@ -64,7 +65,7 @@ export async function saveProfile(
       return;
     }
 
-    store.session.set(undefined);
+    store.session.profile.set(undefined);
     await saveGlobal();
     api.ui.toast({
       variant: "success",
@@ -82,12 +83,18 @@ export async function saveProfile(
   // SAFETY: the TUI host's named session route always carries a string sessionID.
   const sessionID = (route as { params: { sessionID: string } }).params.sessionID;
   const session = api.state.session.get(sessionID);
-  const metadata = { ...session?.metadata };
-  if (profileName) metadata[PROFILE_METADATA_KEY] = profileName;
-  else delete metadata[PROFILE_METADATA_KEY];
+  const metadata: SessionMetadata = { ...session?.metadata };
+  const forge = getProfileMetadata(metadata);
+  if (profileName) {
+    metadata.forge = { ...forge, profile: { id: profileName } };
+  } else if (forge) {
+    delete forge.profile;
+    if (Object.keys(forge).length > 0) metadata.forge = forge;
+    else delete metadata.forge;
+  }
   await api.client.session.update({ sessionID, metadata });
-  store.session.set(profileName ?? null);
-  const model = modelForSession(profileName ? profiles[profileName] : undefined, session?.agent);
+  store.session.profile.set(profileName ? { id: profileName } : null);
+  const model = getModelForSession(profileName ? profiles[profileName] : undefined, session?.agent);
   if (model) {
     try {
       await api.client.v2.session.switchModel({ sessionID, model }, { throwOnError: true });
@@ -140,12 +147,18 @@ export function ProfileCommand(
     run() {
       const profiles = structuredClone(options.value.profiles ?? {});
       const agents = Object.keys(api.state.config.agent ?? {});
-      const forge = api.state.provider.find((provider) => provider.id === "forge");
-      const models = Object.values(forge?.models ?? {}).toSorted((a, b) =>
-        a.name.localeCompare(b.name),
+      const models = api.state.provider
+        .flatMap((provider) =>
+          Object.values(provider.models).map((model) => ({ ...model, provider: provider.id })),
+        )
+        .toSorted((a, b) => a.name.localeCompare(b.name));
+      const modelNames = Object.fromEntries(
+        models.map((model) => [`${model.provider}/${model.id}`, model.name]),
       );
-      const modelNames = Object.fromEntries(models.map((model) => [model.id, model.name]));
-      let selected: ProfileSelection = resolveProfileSelection(options.value.profile, profiles);
+      let selected: ProfileSelection = resolveProfileSelection(
+        store.env.FORGE_PROFILE ?? options.value.profile,
+        profiles,
+      );
       let editKey = "";
       let editID = "";
       let editDraft: Profile | undefined;
@@ -213,17 +226,14 @@ export function ProfileCommand(
             profileName={profileTitle(editDraft, editID)}
             target={editKey}
             models={models.map((model) => ({
+              provider: model.provider,
               id: model.id,
               name: model.name,
               variants: Object.keys(model.variants ?? {}),
             }))}
             current={editDraft!.models[editKey]}
             onConfirm={(model) => {
-              setProfileModel(editDraft!, editKey, model?.id);
-              if (model?.id && editDraft!.models[editKey]) {
-                if (model.variant) editDraft!.models[editKey]!.variant = model.variant;
-                else delete editDraft!.models[editKey]!.variant;
-              }
+              setProfileModel(editDraft!, editKey, model);
               showEditor();
             }}
             onClose={showEditor}

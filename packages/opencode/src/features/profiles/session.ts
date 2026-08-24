@@ -1,28 +1,9 @@
 import type { Hooks } from "@opencode-ai/plugin";
+import type { Session as SessionV2 } from "@opencode-ai/sdk/v2";
 
-import { z } from "zod";
+import { getModelForSession, resolveProfileName, type Profile } from "./profile";
 
-import type { ForgeOptions } from "#plugin/options";
-
-import {
-  modelForSession,
-  PROFILE_METADATA_KEY,
-  resolveProfileName,
-  type ForgeModelRef,
-  type Profile,
-} from "./profile";
-
-const ProfileSessionSchema = z.object({
-  id: z.string(),
-  parentID: z.string().optional(),
-  agent: z.string().optional(),
-  metadata: z
-    .object({
-      [PROFILE_METADATA_KEY]: z.string().optional(),
-    })
-    .optional(),
-});
-type ProfileSession = z.infer<typeof ProfileSessionSchema>;
+type ProfileSession = Pick<SessionV2, "id" | "parentID" | "agent" | "metadata">;
 
 export type ProfileSessionClient = {
   session: {
@@ -36,19 +17,9 @@ export type ProfileSessionClient = {
 type ProfileSessionHooksInput = {
   client: ProfileSessionClient;
   directory: string;
-  getOptions: () => Pick<ForgeOptions, "profile">;
+  getGlobalProfile: () => string | undefined;
   getProfiles: () => Record<string, Profile> | undefined;
 };
-
-function profileFor(
-  input: ProfileSessionHooksInput,
-  session: ProfileSession | undefined,
-  parent: ProfileSession | undefined,
-) {
-  const profiles = input.getProfiles();
-  const name = resolveProfileName(session, parent, input.getOptions().profile, profiles);
-  return name ? { name, profile: profiles?.[name] } : undefined;
-}
 
 async function getSession(input: ProfileSessionHooksInput, sessionID: string) {
   try {
@@ -62,32 +33,30 @@ async function getSession(input: ProfileSessionHooksInput, sessionID: string) {
   }
 }
 
-function messageModel(model: ForgeModelRef) {
-  if (model.variant === undefined) {
-    return { providerID: model.providerID, modelID: model.id };
-  }
-
-  return {
-    providerID: model.providerID,
-    modelID: model.id,
-    variant: model.variant,
-  };
-}
-
 export function createProfileSessionHooks(input: ProfileSessionHooksInput): Hooks {
   return {
     "chat.message": async (messageInput, output) => {
       const session = await getSession(input, messageInput.sessionID);
       const parent = session?.parentID ? await getSession(input, session.parentID) : undefined;
-      const profile = profileFor(
-        input,
+      const profiles = input.getProfiles();
+      const name = resolveProfileName(
         session ?? { id: messageInput.sessionID, agent: messageInput.agent },
         parent,
+        input.getGlobalProfile(),
+        profiles,
       );
-      const model = modelForSession(profile?.profile, session?.agent ?? messageInput.agent);
+      const model = getModelForSession(
+        name ? profiles?.[name] : undefined,
+        session?.agent ?? messageInput.agent,
+        session?.metadata,
+      );
       if (!model) return;
 
-      output.message.model = messageModel(model);
+      const messageModel = { providerID: model.providerID, modelID: model.id };
+      if (model.variant !== undefined) {
+        Object.assign(messageModel, { variant: model.variant });
+      }
+      output.message.model = messageModel;
     },
   };
 }

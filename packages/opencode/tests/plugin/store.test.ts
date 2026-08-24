@@ -69,33 +69,44 @@ describe("plugin store", () => {
     const first = createPluginStore(forge);
     const second = createPluginStore(forge);
 
-    first.session.set("balanced");
+    first.session.profile.set({ id: "balanced", models: { reviewer: { id: "reviewer" } } });
 
-    expect(second.session.get()).toBeUndefined();
-    expect(first.session.get()).toBe("balanced");
+    expect(second.session.profile.get()).toBeUndefined();
+    expect(first.session.profile.get()).toEqual({
+      id: "balanced",
+      models: { reviewer: { id: "reviewer" } },
+    });
   });
 
-  test("get returns the value without clearing it", () => {
-    const store = createPluginStore(forge);
-    store.session.set("balanced");
+  test("stores the supported environment overrides", () => {
+    const store = createPluginStore(forge, {
+      FORGE_PROFILE: "balanced",
+      FORGE_USAGE_ALERT_BALANCE: "3.5",
+    });
 
-    expect(store.session.get()).toBe("balanced");
-    expect(store.session.get()).toBe("balanced");
-    store.session.set(null);
-    expect(store.session.get()).toBeNull();
+    expect(store.env).toEqual({
+      FORGE_PROFILE: "balanced",
+      FORGE_USAGE_ALERT_BALANCE: "3.5",
+    });
   });
 
   test("notifies listeners on set and clear, then stops after unsubscribe", () => {
     const store = createPluginStore(forge);
     const listener = vi.fn();
-    const unsubscribe = store.session.listen(listener);
+    const unsubscribe = store.session.profile.listen(listener);
 
-    store.session.set("balanced");
-    store.session.set(undefined);
+    store.session.profile.set({
+      id: "balanced",
+      models: { reviewer: { id: "reviewer", variant: "fast" } },
+    });
+    store.session.profile.set(undefined);
     unsubscribe();
-    store.session.set("ignored");
+    store.session.profile.set({ id: "ignored" });
 
-    expect(listener.mock.calls.map(([value]) => value)).toEqual(["balanced", undefined]);
+    expect(listener.mock.calls.map(([value]) => value)).toEqual([
+      { id: "balanced", models: { reviewer: { id: "reviewer", variant: "fast" } } },
+      undefined,
+    ]);
   });
 
   test("resolves forge-prefixed model ids and returns undefined for missing ids", async () => {

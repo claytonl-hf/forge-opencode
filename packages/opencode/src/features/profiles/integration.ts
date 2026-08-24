@@ -1,10 +1,12 @@
+import type { ModelRef } from "@opencode-ai/sdk/v2";
+
 import type { Integration } from "#plugin/integrations/types";
 
-import { onTuiSessionCreated } from "./pending";
+import { onTuiSessionCreated } from "./lifecycle";
+import { createProfileSessionListener } from "./listener";
 import { createProfileSessionHooks, type ProfileSessionClient } from "./session";
 
 export const ProfileIntegration: Integration = async ({ forge, options: forgeOptions, store }) => {
-  const options = forgeOptions.value;
   const provider = await forge.provider();
 
   return {
@@ -19,33 +21,36 @@ export const ProfileIntegration: Integration = async ({ forge, options: forgeOpt
         ...createProfileSessionHooks({
           client: profileClient,
           directory,
-          getOptions: () => forgeOptions.value,
+          getGlobalProfile: () => store.env.FORGE_PROFILE ?? forgeOptions.value.profile,
           getProfiles: () => forgeOptions.value.profiles,
         }),
         async config(config) {
-          if (!provider || !options.profiles || !options.profile) {
+          const options = forgeOptions.value;
+          const profileName = store.env.FORGE_PROFILE ?? options.profile;
+          if (!provider || !options.profiles || !profileName) {
             return;
           }
 
-          const profile = options.profiles[options.profile];
+          const profile = options.profiles[profileName];
 
           if (!profile) {
             return;
           }
 
           for (const [key, model] of Object.entries(profile.models)) {
+            const providerID = model.provider ?? provider.id;
             if (key === "$default") {
-              config.model = `${provider.id}/${model.id}`;
+              config.model = `${providerID}/${model.id}`;
               continue;
             }
             if (key === "$small") {
-              config.small_model = `${provider.id}/${model.id}`;
+              config.small_model = `${providerID}/${model.id}`;
               continue;
             }
 
             config.agent = config.agent ?? {};
             config.agent[key] = config.agent[key] ?? {};
-            config.agent[key].model = `${provider.id}/${model.id}`;
+            config.agent[key].model = `${providerID}/${model.id}`;
 
             if (model.variant === null) {
               delete config.agent[key].variant;
@@ -62,12 +67,17 @@ export const ProfileIntegration: Integration = async ({ forge, options: forgeOpt
         import("./slot"),
         import("#plugin/tui/slots"),
       ]);
-      api.event.on("session.created", (event) => {
+      const disposeCreatedListener = api.event.on("session.created", (event) => {
         const info = event.properties.info;
+        const model: ModelRef | undefined = info.model
+          ? { id: info.model.id, providerID: info.model.providerID }
+          : undefined;
+        if (model && info.model?.variant != null) model.variant = info.model.variant;
         void onTuiSessionCreated({
           sessionID: info.id,
           parentID: info.parentID,
           agent: info.agent,
+          model,
           metadata: info.metadata,
           profiles: forgeOptions.value.profiles ?? {},
           store,
@@ -80,6 +90,18 @@ export const ProfileIntegration: Integration = async ({ forge, options: forgeOpt
           },
         });
       });
+      api.lifecycle?.onDispose(disposeCreatedListener);
+      const disposeSessionListener = api.event.on(
+        "session.updated",
+        createProfileSessionListener({
+          getGlobalProfile: () => store.env.FORGE_PROFILE ?? forgeOptions.value.profile,
+          getProfiles: () => forgeOptions.value.profiles,
+          update: async (sessionID, metadata) => {
+            await api.client.session.update({ sessionID, metadata });
+          },
+        }),
+      );
+      api.lifecycle?.onDispose(disposeSessionListener);
 
       return {
         commands: [ProfileCommand(api, forgeOptions, store)],
