@@ -3,6 +3,7 @@ import type { ModelRef } from "@opencode-ai/sdk/v2";
 import type { SessionMetadata } from "#common/session";
 import type { PluginStore } from "#plugin/store";
 
+import { clearExpectedSessionModel, expectSessionModel } from "./listener";
 import { getProfileMetadata, getModelForSession, type Profile } from "./profile";
 
 type ApplySessionProfileInput = {
@@ -36,17 +37,20 @@ export async function applySessionProfile(input: ApplySessionProfileInput): Prom
       profile: stampedProfile,
     },
   };
+  const model = getModelForSession(profile, input.agent, metadata);
+  if (model) expectSessionModel(input.sessionID, model);
 
   try {
     await input.update(input.sessionID, metadata);
   } catch {
+    if (model) clearExpectedSessionModel(input.sessionID);
     return;
   }
 
   try {
-    const model = getModelForSession(profile, input.agent, metadata);
     if (model) await input.switchModel(input.sessionID, model);
   } catch {
+    if (model) clearExpectedSessionModel(input.sessionID);
     // The session is already stamped; leave the session profile unchanged.
   }
 }
@@ -70,6 +74,9 @@ export async function onTuiSessionCreated(input: OnTuiSessionCreatedInput): Prom
     const profile = input.profiles[name];
     if (!profile) return;
 
+    const model = getModelForSession(profile, input.agent);
+    if (model) expectSessionModel(input.sessionID, model);
+
     await input.update(input.sessionID, {
       ...input.metadata,
       forge: {
@@ -77,9 +84,9 @@ export async function onTuiSessionCreated(input: OnTuiSessionCreatedInput): Prom
         profile: { id: name },
       },
     });
-    const model = getModelForSession(profile, input.agent);
     if (model) await input.switchModel(input.sessionID, model);
   } catch {
+    clearExpectedSessionModel(input.sessionID);
     // Profile metadata is advisory and must never block session creation.
   }
 }

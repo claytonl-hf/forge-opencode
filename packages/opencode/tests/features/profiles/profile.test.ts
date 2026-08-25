@@ -8,7 +8,11 @@ import type { SessionMetadata } from "#common/session";
 
 import { ProfileCommand, saveEditedProfile, saveProfile } from "#features/profiles/command";
 import { applySessionProfile, onTuiSessionCreated } from "#features/profiles/lifecycle";
-import { createProfileSessionListener } from "#features/profiles/listener";
+import {
+  clearExpectedSessionModel,
+  createProfileSessionListener,
+  expectSessionModel,
+} from "#features/profiles/listener";
 import {
   DesktopProfile,
   filterOptions,
@@ -537,6 +541,85 @@ describe("profile session hooks", () => {
     }
   });
 
+  test("does not resurrect an override when applySessionProfile switches to the configured model", async () => {
+    store.session.profile.set(undefined);
+    const sessionID = "configured-model-switch";
+    try {
+      store.session.profile.set({ id: "balanced" });
+      const updates: Array<{ sessionID: string; metadata: SessionMetadata }> = [];
+      const switches: SessionSwitchModelInput[] = [];
+
+      await onTuiSessionCreated({
+        store,
+        sessionID,
+        agent: "reviewer",
+        model: { id: "session-reviewer", providerID: "forge", variant: "fast" },
+        metadata: { preserved: "value" },
+        profiles: {
+          balanced: Profile.parse({
+            models: { reviewer: { id: "reviewer", variant: "high" } },
+          }),
+        },
+        getParent: async () => undefined,
+        update: async (updatedSessionID, metadata) => {
+          updates.push({ sessionID: updatedSessionID, metadata });
+        },
+        switchModel: async (switchedSessionID, model) => {
+          switches.push({ sessionID: switchedSessionID, model });
+        },
+      });
+
+      expect(updates).toEqual([
+        {
+          sessionID,
+          metadata: {
+            preserved: "value",
+            forge: { profile: { id: "balanced" } },
+          },
+        },
+      ]);
+      expect(switches).toEqual([
+        {
+          sessionID,
+          model: { id: "reviewer", providerID: "forge", variant: "high" },
+        },
+      ]);
+
+      const listenerUpdates: Array<{ sessionID: string; metadata: SessionMetadata }> = [];
+      const listener = createProfileSessionListener({
+        getProfiles: () => ({
+          balanced: Profile.parse({
+            models: { reviewer: { id: "reviewer", variant: "high" } },
+          }),
+        }),
+        update: async (updatedSessionID, metadata) => {
+          listenerUpdates.push({ sessionID: updatedSessionID, metadata });
+        },
+      });
+
+      // SAFETY: the listener only reads properties.info.{id,agent,model,metadata} from this focused session.updated fixture.
+      listener({
+        id: "event",
+        type: "session.updated",
+        properties: {
+          sessionID,
+          info: {
+            id: sessionID,
+            agent: "reviewer",
+            model: { id: "session-reviewer", providerID: "forge", variant: "fast" },
+            metadata: { forge: { profile: { id: "balanced" } } },
+          },
+        },
+      } as never);
+      await Promise.resolve();
+
+      expect(listenerUpdates).toEqual([]);
+    } finally {
+      clearExpectedSessionModel(sessionID);
+      store.session.profile.set(undefined);
+    }
+  });
+
   test("stamps existing session profile models and switches to the explicit override", async () => {
     store.session.profile.set(undefined);
     try {
@@ -808,6 +891,144 @@ describe("profile session listener", () => {
                 $default: { id: "default-override" },
                 reviewer: { id: "alternate", variant: "fast" },
               },
+            },
+          },
+        },
+      },
+    ]);
+  });
+
+  test("ignores a stale host model while a Forge switch is pending", async () => {
+    const sessionID = "pending-stale-host-model";
+    const updates: Array<{ sessionID: string; metadata: SessionMetadata }> = [];
+    const listener = createProfileSessionListener({
+      getProfiles: () => profiles,
+      update: async (updatedSessionID, metadata) => {
+        updates.push({ sessionID: updatedSessionID, metadata });
+      },
+    });
+
+    try {
+      expectSessionModel(sessionID, { id: "reviewer", providerID: "forge", variant: "high" });
+
+      // SAFETY: the listener only reads properties.info.{id,agent,model,metadata} from this focused session.updated fixture.
+      listener({
+        id: "event",
+        type: "session.updated",
+        properties: {
+          sessionID,
+          info: {
+            id: sessionID,
+            agent: "reviewer",
+            model: { id: "grok", providerID: "forge" },
+            metadata: { forge: { profile: { id: "balanced" } } },
+          },
+        },
+      } as never);
+      await Promise.resolve();
+
+      expect(updates).toEqual([]);
+    } finally {
+      clearExpectedSessionModel(sessionID);
+    }
+  });
+
+  test("clears the pending expectation when the expected model is observed", async () => {
+    const sessionID = "pending-expected-model-observed";
+    const updates: Array<{ sessionID: string; metadata: SessionMetadata }> = [];
+    const listener = createProfileSessionListener({
+      getProfiles: () => profiles,
+      update: async (updatedSessionID, metadata) => {
+        updates.push({ sessionID: updatedSessionID, metadata });
+      },
+    });
+
+    try {
+      expectSessionModel(sessionID, { id: "reviewer", providerID: "forge", variant: "high" });
+
+      // SAFETY: the listener only reads properties.info.{id,agent,model,metadata} from this focused session.updated fixture.
+      listener({
+        id: "expected-event",
+        type: "session.updated",
+        properties: {
+          sessionID,
+          info: {
+            id: sessionID,
+            agent: "reviewer",
+            model: { id: "reviewer", providerID: "forge", variant: "high" },
+            metadata: { forge: { profile: { id: "balanced" } } },
+          },
+        },
+      } as never);
+
+      // SAFETY: the listener only reads properties.info.{id,agent,model,metadata} from this focused session.updated fixture.
+      listener({
+        id: "alternate-event",
+        type: "session.updated",
+        properties: {
+          sessionID,
+          info: {
+            id: sessionID,
+            agent: "reviewer",
+            model: { id: "alternate", providerID: "forge", variant: "fast" },
+            metadata: { forge: { profile: { id: "balanced" } } },
+          },
+        },
+      } as never);
+      await Promise.resolve();
+
+      expect(updates).toEqual([
+        {
+          sessionID,
+          metadata: {
+            forge: {
+              profile: {
+                id: "balanced",
+                models: { reviewer: { id: "alternate", variant: "fast" } },
+              },
+            },
+          },
+        },
+      ]);
+    } finally {
+      clearExpectedSessionModel(sessionID);
+    }
+  });
+
+  test("still records a real host model change when no switch is pending", async () => {
+    const sessionID = "host-model-change-without-pending-switch";
+    const updates: Array<{ sessionID: string; metadata: SessionMetadata }> = [];
+    const listener = createProfileSessionListener({
+      getProfiles: () => profiles,
+      update: async (updatedSessionID, metadata) => {
+        updates.push({ sessionID: updatedSessionID, metadata });
+      },
+    });
+
+    // SAFETY: the listener only reads properties.info.{id,agent,model,metadata} from this focused session.updated fixture.
+    listener({
+      id: "event",
+      type: "session.updated",
+      properties: {
+        sessionID,
+        info: {
+          id: sessionID,
+          agent: "reviewer",
+          model: { id: "alternate", providerID: "forge", variant: "fast" },
+          metadata: { forge: { profile: { id: "balanced" } } },
+        },
+      },
+    } as never);
+    await Promise.resolve();
+
+    expect(updates).toEqual([
+      {
+        sessionID,
+        metadata: {
+          forge: {
+            profile: {
+              id: "balanced",
+              models: { reviewer: { id: "alternate", variant: "fast" } },
             },
           },
         },

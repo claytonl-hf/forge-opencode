@@ -1,4 +1,4 @@
-import type { EventSessionUpdated } from "@opencode-ai/sdk/v2";
+import type { EventSessionUpdated, ModelRef } from "@opencode-ai/sdk/v2";
 
 import type { SessionMetadata } from "#common/session";
 
@@ -16,6 +16,20 @@ type ProfileSessionListenerInput = {
   getGlobalProfile?: () => string | undefined;
   update: (sessionID: string, metadata: SessionMetadata) => Promise<void>;
 };
+
+const EXPECTED_SESSION_MODEL_TTL_MS = 5000;
+const expectedSessionModels = new Map<string, { expected: ModelRef; expiresAt: number }>();
+
+export function expectSessionModel(sessionID: string, expected: ModelRef): void {
+  expectedSessionModels.set(sessionID, {
+    expected,
+    expiresAt: Date.now() + EXPECTED_SESSION_MODEL_TTL_MS,
+  });
+}
+
+export function clearExpectedSessionModel(sessionID: string): void {
+  expectedSessionModels.delete(sessionID);
+}
 
 export function createProfileSessionListener(
   input: ProfileSessionListenerInput,
@@ -57,6 +71,15 @@ export function createProfileSessionListener(
     const effectiveOverride = configuredAgent
       ? existingOverride
       : (existingOverride ?? current?.models?.$default);
+
+    const expected = expectedSessionModels.get(sessionID);
+    if (expected?.expiresAt && expected.expiresAt <= Date.now()) {
+      expectedSessionModels.delete(sessionID);
+    } else if (expected && isModelEqual(info.model, expected.expected)) {
+      expectedSessionModels.delete(sessionID);
+    } else if (expected) {
+      return;
+    }
 
     if (matchesConfigured) {
       if (!existingOverride && (!current?.models?.$default || configuredAgent)) return;

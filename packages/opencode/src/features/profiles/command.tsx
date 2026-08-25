@@ -10,6 +10,7 @@ import type { PluginStore } from "#plugin/store";
 
 import type { Profile } from "./profile";
 
+import { clearExpectedSessionModel, expectSessionModel } from "./listener";
 import {
   DesktopProfile,
   ModelPicker,
@@ -92,13 +93,20 @@ export async function saveProfile(
     if (Object.keys(forge).length > 0) metadata.forge = forge;
     else delete metadata.forge;
   }
-  await api.client.session.update({ sessionID, metadata });
-  store.session.profile.set(profileName ? { id: profileName } : null);
   const model = getModelForSession(profileName ? profiles[profileName] : undefined, session?.agent);
+  if (model) expectSessionModel(sessionID, model);
+  try {
+    await api.client.session.update({ sessionID, metadata });
+  } catch (error) {
+    if (model) clearExpectedSessionModel(sessionID);
+    throw error;
+  }
+  store.session.profile.set(profileName ? { id: profileName } : null);
   if (model) {
     try {
       await api.client.v2.session.switchModel({ sessionID, model }, { throwOnError: true });
     } catch {
+      clearExpectedSessionModel(sessionID);
       api.ui.toast({
         variant: "error",
         title: "Forge profile saved",
