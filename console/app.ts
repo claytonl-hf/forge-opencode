@@ -2,6 +2,8 @@ import Forge, { createForge, ForgeError } from "@forge/core";
 import { message } from "@optique/core";
 import { runProgram } from "@optique/discover";
 
+import packageJson from "../package.json" with { type: "json" };
+
 type Context = { forge?: Forge };
 
 export const context: Context = {};
@@ -17,7 +19,8 @@ export async function run() {
   return await runProgram({
     metadata: {
       name: "forge",
-      description: message`Humanforce Forge integration for AI agent harnesses`,
+      description: message`${packageJson.description}`,
+      version: packageJson.version,
     },
     hooks: {
       async beforeEach() {
