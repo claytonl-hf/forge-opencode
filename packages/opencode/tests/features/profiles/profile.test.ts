@@ -197,9 +197,40 @@ describe("profile session helpers", () => {
         "global",
         profiles,
       ),
-    ).toBe("Balanced");
+    ).toBe("Balanced*");
     expect(visibleHomeProfileTitle(undefined, "global", profiles)).toBe("global");
     expect(visibleHomeProfileTitle(null, "global", profiles)).toBe("global");
+  });
+
+  test("marks session and home titles with model overrides", () => {
+    expect(
+      visibleProfileTitle(
+        { metadata: { forge: { profile: { id: "balanced" } } } },
+        undefined,
+        "global",
+        profiles,
+      ),
+    ).toBe("Balanced");
+    expect(
+      visibleProfileTitle(
+        {
+          metadata: {
+            forge: { profile: { id: "balanced", models: { reviewer: { id: "custom" } } } },
+          },
+        },
+        undefined,
+        "global",
+        profiles,
+      ),
+    ).toBe("Balanced*");
+    expect(visibleHomeProfileTitle({ id: "balanced" }, "global", profiles)).toBe("Balanced");
+    expect(
+      visibleHomeProfileTitle(
+        { id: "balanced", models: { reviewer: { id: "custom" } } },
+        "global",
+        profiles,
+      ),
+    ).toBe("Balanced*");
   });
 
   test("hides missing, unknown, and Desktop Default selections", () => {
@@ -459,7 +490,7 @@ describe("profile session hooks", () => {
     }
   });
 
-  test("stamps a structured session profile and preserves the initial Forge model override", async () => {
+  test("stamps only the pending session profile and switches to its configured model", async () => {
     store.session.profile.set(undefined);
     try {
       store.session.profile.set({ id: "balanced" });
@@ -471,6 +502,56 @@ describe("profile session hooks", () => {
         sessionID: "top-level",
         agent: "reviewer",
         model: { id: "session-reviewer", providerID: "forge", variant: "fast" },
+        metadata: { preserved: "value" },
+        profiles: {
+          balanced: Profile.parse({
+            models: { reviewer: { id: "reviewer", variant: "high" } },
+          }),
+        },
+        getParent: async () => undefined,
+        update: async (sessionID, metadata) => {
+          updates.push({ sessionID, metadata });
+        },
+        switchModel: async (sessionID, model) => {
+          switches.push({ sessionID, model });
+        },
+      });
+
+      expect(updates).toEqual([
+        {
+          sessionID: "top-level",
+          metadata: {
+            preserved: "value",
+            forge: { profile: { id: "balanced" } },
+          },
+        },
+      ]);
+      expect(switches).toEqual([
+        {
+          sessionID: "top-level",
+          model: { id: "reviewer", providerID: "forge", variant: "high" },
+        },
+      ]);
+    } finally {
+      store.session.profile.set(undefined);
+    }
+  });
+
+  test("stamps existing session profile models and switches to the explicit override", async () => {
+    store.session.profile.set(undefined);
+    try {
+      store.session.profile.set({
+        id: "balanced",
+        models: { reviewer: { id: "session-reviewer", variant: "fast" } },
+      });
+      const updates: Array<{ sessionID: string; metadata: SessionMetadata }> = [];
+      const switches: SessionSwitchModelInput[] = [];
+
+      await onTuiSessionCreated({
+        store,
+        sessionID: "top-level",
+        agent: "reviewer",
+        model: { id: "create-time-model", providerID: "forge" },
         metadata: { preserved: "value" },
         profiles: {
           balanced: Profile.parse({

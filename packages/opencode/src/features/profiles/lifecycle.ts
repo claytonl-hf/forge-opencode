@@ -3,14 +3,7 @@ import type { ModelRef } from "@opencode-ai/sdk/v2";
 import type { SessionMetadata } from "#common/session";
 import type { PluginStore } from "#plugin/store";
 
-import {
-  getProfileMetadata,
-  getAgentKey,
-  getModelForSession,
-  isModelEqual,
-  toProfileModel,
-  type Profile,
-} from "./profile";
+import { getProfileMetadata, getModelForSession, type Profile } from "./profile";
 
 type ApplySessionProfileInput = {
   store: PluginStore;
@@ -31,15 +24,7 @@ export async function applySessionProfile(input: ApplySessionProfileInput): Prom
   if (!sessionProfile?.id) return;
 
   const profile = input.profiles[sessionProfile.id];
-  const agentKey = getAgentKey(input.agent);
   const models = { ...sessionProfile.models };
-
-  if (input.model?.id) {
-    const configured = getModelForSession(profile, input.agent);
-    if (!isModelEqual(input.model, configured)) {
-      models[agentKey] = toProfileModel(input.model);
-    }
-  }
 
   const stampedProfile =
     Object.keys(models).length > 0 ? { id: sessionProfile.id, models } : { id: sessionProfile.id };

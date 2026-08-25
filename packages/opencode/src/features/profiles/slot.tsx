@@ -89,7 +89,14 @@ function ProfileSlot({ api, options, store, theme, sessionID }: Props) {
     <Show when={currentTitle()}>
       {(title: Accessor<string>) => (
         <text truncate wrapMode="none" style={{ fg: theme.current.primary }} onMouseUp={open}>
-          {title()}
+          {title().endsWith("*") ? (
+            <>
+              {title().slice(0, -1)}
+              <span style={{ fg: theme.current.textMuted }}>*</span>
+            </>
+          ) : (
+            title()
+          )}
         </text>
       )}
     </Show>

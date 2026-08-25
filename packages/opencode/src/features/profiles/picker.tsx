@@ -7,7 +7,7 @@ import { createEffect, createMemo, createSignal, For, onCleanup, Show } from "so
 
 import type { ProfileSessionMetadata, SessionProfile } from "./profile";
 
-import { resolveProfileName, type Profile } from "./profile";
+import { getProfileMetadata, resolveProfileName, type Profile } from "./profile";
 
 export const DesktopProfile = Symbol("forge-desktop-profile");
 export type ProfileSelection = string | typeof DesktopProfile | null;
@@ -509,10 +509,19 @@ export function visibleProfileTitle(
   globalProfile: string | undefined,
   profiles: Record<string, Profile> | undefined,
 ): string | undefined {
+  const sessionProfile = getProfileMetadata(session?.metadata)?.profile;
+  const parentProfile = getProfileMetadata(parent?.metadata)?.profile;
   const key = resolveProfileName(session, parent, globalProfile, profiles);
   const selection = resolveProfileSelection(key, profiles ?? {});
   if (selection === null || selection === DesktopProfile) return undefined;
-  return profileTitle(profiles?.[selection], selection);
+  const title = profileTitle(profiles?.[selection], selection);
+  const resolvedProfile =
+    sessionProfile?.id === selection
+      ? sessionProfile
+      : parentProfile?.id === selection
+        ? parentProfile
+        : undefined;
+  return hasModelOverrides(resolvedProfile) ? `${title}*` : title;
 }
 
 export function visibleHomeProfileTitle(
@@ -521,7 +530,17 @@ export function visibleHomeProfileTitle(
   profiles: Record<string, Profile> | undefined,
 ): string | undefined {
   const sessionProfileID = sessionProfile?.id;
-  return visibleProfileTitle(undefined, undefined, sessionProfileID || globalProfile, profiles);
+  const title = visibleProfileTitle(
+    undefined,
+    undefined,
+    sessionProfileID || globalProfile,
+    profiles,
+  );
+  return hasModelOverrides(sessionProfile) && title ? `${title}*` : title;
+}
+
+function hasModelOverrides(profile: SessionProfile | undefined) {
+  return Object.keys(profile?.models ?? {}).length > 0;
 }
 
 export function filterOptions<Value>(options: SelectOption<Value>[], query: string) {
