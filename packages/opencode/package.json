@@ -1,5 +1,7 @@
 {
   "name": "@forge/opencode",
+  "version": "0.1.0",
+  "description": "OpenCode plugin for Humanforce Forge",
   "type": "module",
   "imports": {
     "#tests/*": "./tests/*",

@@ -21,13 +21,14 @@ export async function version() {
 }
 
 export async function install(options?: {
+  source?: string;
   location?: string;
   profiles?: boolean;
   mcp?: boolean;
   plugins?: boolean;
 }) {
   const location = options?.location ?? ConfigDirectories.global;
-  const ForgePlugin = relative(location, PackageRoot);
+  const ForgePlugin = options?.source ?? relative(location, PackageRoot);
   const results = await Promise.all([
     patch(location, "opencode", async (config) => {
       config.plugin = configurePlugins(config.plugin ?? [], {
