@@ -1,5 +1,6 @@
 {
   "name": "@forge/core",
+  "private": true,
   "type": "module",
   "imports": {
     "#*": "./src/*"
