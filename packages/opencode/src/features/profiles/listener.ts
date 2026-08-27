@@ -5,7 +5,7 @@ import type { SessionMetadata } from "#common/session";
 import {
   getProfileMetadata,
   getAgentKey,
-  getModelForSession,
+  getExplicitModelForSession,
   isModelEqual,
   toProfileModel,
   type Profile,
@@ -65,7 +65,7 @@ export function createProfileSessionListener(
 
     const agentKey = getAgentKey(info.agent);
     const configuredAgent = agentKey === "$default" ? undefined : profile.models[agentKey];
-    const configured = getModelForSession(profile, info.agent);
+    const configured = getExplicitModelForSession(profile, info.agent);
     const existingOverride = current?.models?.[agentKey];
     const matchesConfigured = isModelEqual(info.model, configured);
     const effectiveOverride = configuredAgent
@@ -78,6 +78,15 @@ export function createProfileSessionListener(
     } else if (expected && isModelEqual(info.model, expected.expected)) {
       expectedSessionModels.delete(sessionID);
     } else if (expected) {
+      return;
+    }
+
+    if (
+      !configuredAgent &&
+      existingOverride &&
+      isModelEqual(info.model, profile.models.$default) &&
+      !isModelEqual(info.model, existingOverride)
+    ) {
       return;
     }
 

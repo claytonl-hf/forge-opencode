@@ -24,6 +24,7 @@ import {
 } from "#features/profiles/picker";
 import {
   getProfileMetadata,
+  getExplicitModelForSession,
   getModelForSession,
   Profile,
   resolveProfileName,
@@ -255,6 +256,15 @@ describe("profile session helpers", () => {
       variant: "medium",
     });
     expect(getModelForSession(Profile.parse({ models: {} }), "reviewer")).toBeUndefined();
+  });
+
+  test("resolves only explicit agent models without falling back to the default mapping", () => {
+    expect(getExplicitModelForSession(profiles.balanced, "missing")).toBeUndefined();
+    expect(getExplicitModelForSession(profiles.balanced, "reviewer")).toEqual({
+      id: "reviewer",
+      providerID: "forge",
+      variant: "high",
+    });
   });
 
   test("resolves a configured provider to the SDK providerID", () => {
@@ -834,6 +844,103 @@ describe("profile session hooks", () => {
     };
     expect(output.message.model).toEqual(model);
   });
+
+  test("leaves chat.message output.model unchanged for an unmapped agent", async () => {
+    const incomingModel: NonNullable<ProfileChatMessageInput["model"]> = {
+      providerID: "old",
+      modelID: "old",
+    };
+    const hooks = createProfileSessionHooks({
+      client: {
+        session: {
+          get: async () => ({
+            data: {
+              id: "chat-session",
+              agent: "chat",
+              metadata: { forge: { profile: { id: "balanced" } } },
+            },
+          }),
+        },
+      },
+      directory: "/tmp",
+      getGlobalProfile: () => undefined,
+      getProfiles: () => ({
+        balanced: Profile.parse({ models: { $default: { id: "default" } } }),
+      }),
+    });
+    const input = { sessionID: "chat-session", agent: "chat", model: incomingModel };
+    // SAFETY: this focused fixture includes the message fields consumed by the chat.message hook.
+    const output = {
+      message: {
+        id: "message",
+        sessionID: "chat-session",
+        role: "user",
+        time: { created: 1 },
+        agent: "chat",
+        model: incomingModel,
+      },
+      parts: [],
+    } as ProfileChatMessageOutput;
+
+    await hooks["chat.message"]?.(input, output);
+
+    expect(output.message.model).toBe(incomingModel);
+  });
+
+  test("stamps an unmapped agent chat.message with its session override", async () => {
+    const hooks = createProfileSessionHooks({
+      client: {
+        session: {
+          get: async () => ({
+            data: {
+              id: "chat-session",
+              agent: "chat",
+              metadata: {
+                forge: {
+                  profile: {
+                    id: "balanced",
+                    models: { chat: { id: "alternate", variant: "fast" } },
+                  },
+                },
+              },
+            },
+          }),
+        },
+      },
+      directory: "/tmp",
+      getGlobalProfile: () => undefined,
+      getProfiles: () => ({
+        balanced: Profile.parse({ models: { $default: { id: "default" } } }),
+      }),
+    });
+    // SAFETY: this focused fixture includes the message fields consumed by the chat.message hook.
+    const output = {
+      message: {
+        id: "message",
+        sessionID: "chat-session",
+        role: "user",
+        time: { created: 1 },
+        agent: "chat",
+        model: { providerID: "forge", modelID: "incoming" },
+      },
+      parts: [],
+    } as ProfileChatMessageOutput;
+
+    await hooks["chat.message"]?.(
+      {
+        sessionID: "chat-session",
+        agent: "chat",
+        model: { providerID: "forge", modelID: "incoming" },
+      },
+      output,
+    );
+
+    expect(output.message.model).toEqual({
+      providerID: "forge",
+      modelID: "alternate",
+      variant: "fast",
+    });
+  });
 });
 
 describe("profile session listener", () => {
@@ -1116,6 +1223,48 @@ describe("profile session listener", () => {
         },
       },
     ]);
+  });
+
+  test("keeps an unmapped agent override when a later host update selects the default", async () => {
+    const updates: SessionMetadata[] = [];
+    const listener = createProfileSessionListener({
+      getProfiles: () => profiles,
+      update: async (_sessionID, metadata) => {
+        updates.push(metadata);
+      },
+    });
+
+    // SAFETY: the listener only reads properties.info.{id,agent,model,metadata} from these focused fixtures.
+    listener({
+      properties: {
+        sessionID: "chat-session",
+        info: {
+          id: "chat-session",
+          agent: "chat",
+          model: { id: "alternate", providerID: "forge" },
+          metadata: { forge: { profile: { id: "balanced" } } },
+        },
+      },
+    } as never);
+    await Promise.resolve();
+
+    const firstMetadata = updates[0]!;
+    // SAFETY: the listener only reads properties.info.{id,agent,model,metadata} from these focused fixtures.
+    listener({
+      properties: {
+        sessionID: "chat-session",
+        info: {
+          id: "chat-session",
+          agent: "chat",
+          model: { id: "default", providerID: "forge", variant: "medium" },
+          metadata: firstMetadata,
+        },
+      },
+    } as never);
+    await Promise.resolve();
+
+    expect(updates).toHaveLength(1);
+    expect(getProfileMetadata(updates[0])?.profile?.models?.chat).toEqual({ id: "alternate" });
   });
 
   test("uses the configured global profile when the session has no profile pin", async () => {

@@ -113,6 +113,28 @@ export function getModelForSession(
   return result;
 }
 
+export function getExplicitModelForSession(
+  profile: Profile | undefined,
+  agent?: string,
+  metadata?: SessionMetadata,
+): ModelRef | undefined {
+  if (!profile) return undefined;
+
+  const sessionProfile = getProfileMetadata(metadata)?.profile;
+  const agentKey = getAgentKey(agent);
+  const model = sessionProfile?.models?.[agentKey] ?? profile.models[agentKey];
+  if (!model?.id) return undefined;
+
+  const result: ModelRef = {
+    id: model.id,
+    providerID: model.provider ?? "forge",
+  };
+
+  if (model.variant != null) result.variant = model.variant;
+
+  return result;
+}
+
 export function setProfileModel(
   profile: Profile,
   key: string,

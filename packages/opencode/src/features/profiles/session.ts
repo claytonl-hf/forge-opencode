@@ -1,7 +1,7 @@
 import type { Hooks } from "@opencode-ai/plugin";
 import type { Session as SessionV2 } from "@opencode-ai/sdk/v2";
 
-import { getModelForSession, resolveProfileName, type Profile } from "./profile";
+import { getExplicitModelForSession, resolveProfileName, type Profile } from "./profile";
 
 type ProfileSession = Pick<SessionV2, "id" | "parentID" | "agent" | "metadata">;
 
@@ -45,7 +45,7 @@ export function createProfileSessionHooks(input: ProfileSessionHooksInput): Hook
         input.getGlobalProfile(),
         profiles,
       );
-      const model = getModelForSession(
+      const model = getExplicitModelForSession(
         name ? profiles?.[name] : undefined,
         session?.agent ?? messageInput.agent,
         session?.metadata,
