@@ -10,7 +10,7 @@ const BudgetSchema = z.object({
 });
 
 const ModelBandSchema = z.enum(["$", "$$", "$$$"]);
-const ModelCapabilitiesSchema = z.enum(["text", "images", "tools", "docs"]);
+const ModelCapabilitiesSchema = z.enum(["text", "images", "tools", "docs", "video"]);
 const ModelCostTierSchema = z.enum(["low", "mid", "high"]);
 const ModelSpeedTierSchema = z.enum(["fast", "medium", "slow"]);
 const ModelReasoningSchema = z.custom<ReasoningEffort>(

@@ -72,6 +72,9 @@ export default defineCommand({
     ),
   }),
   async handler({ json, properties }) {
+    // Ensure the Forge state is fresh
+    await context.forge?.state(true);
+
     const has = async function has<T>(
       key: Property,
       value: () => T | Promise<T>,

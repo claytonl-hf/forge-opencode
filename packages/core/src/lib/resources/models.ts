@@ -19,6 +19,7 @@ function fromCatalog(item: ModelDefinition): Model {
     if (capability === "text") return ["text" as const];
     if (capability === "images") return ["image" as const];
     if (capability === "docs") return ["pdf" as const];
+    if (capability === "video") return ["video" as const];
     return [];
   });
 
