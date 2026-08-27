@@ -41,7 +41,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@opencode-ai/sdk": ">=1.18.20",
+    "@opencode-ai/sdk": ">=1.18.23",
     "@types/node": "catalog:"
   },
   "peerDependencies": {
