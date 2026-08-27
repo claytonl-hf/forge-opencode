@@ -1,7 +1,26 @@
+import type { ReasoningOption } from "@opencode-ai/models";
+
 import type { PluginContext } from "#plugin/context";
 import type { Integration } from "#plugin/integrations/types";
 
 import { configureAgents, type ConfigAgent } from "#platform/config";
+
+function getModelVariants(model: { reasoning_options?: ReasoningOption[] }) {
+  const variants: Record<string, { reasoning: { effort: string } }> = {};
+  const effort = model.reasoning_options?.find(
+    (option): option is Extract<ReasoningOption, { type: "effort" }> => option.type === "effort",
+  );
+
+  if (effort) {
+    for (const value of effort.values) {
+      if (value && value.length > 0) {
+        variants[value] = { reasoning: { effort: value } };
+      }
+    }
+  }
+
+  return variants;
+}
 
 export async function ModelsIntegration({
   forge,
@@ -22,14 +41,18 @@ export async function ModelsIntegration({
           npm: provider.package,
           api: provider.api.endpoint,
           models: Object.fromEntries(
-            Object.entries(models).map(([id, model]) => [
-              id,
-              {
-                ...model,
-                experimental: Boolean(model.experimental),
-                provider: model.provider?.npm ? { npm: model.provider.npm } : undefined,
-              },
-            ]),
+            Object.entries(models).map(([id, model]) => {
+              const variants = getModelVariants(model);
+              return [
+                id,
+                {
+                  ...model,
+                  experimental: Boolean(model.experimental),
+                  provider: model.provider?.npm ? { npm: model.provider.npm } : undefined,
+                  ...(Object.keys(variants).length > 0 ? { variants } : undefined),
+                },
+              ];
+            }),
           ),
           options: {
             baseURL: provider.api.endpoint,

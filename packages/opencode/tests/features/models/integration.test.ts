@@ -54,6 +54,97 @@ describe("models integration", () => {
     expect(config.enabled_providers).toEqual(["anthropic", "forge"]);
   });
 
+  test("derives effort variants from model reasoning options", async () => {
+    const forge = {
+      provider: vi.fn(async () => provider()),
+      models: vi.fn(async () => ({
+        "glm-5.3-flash": {
+          id: "glm-5.3-flash",
+          name: "GLM 5.3 Flash",
+          reasoning_options: [{ type: "effort", values: ["low", "high", "max"] }],
+        },
+      })),
+      agents: vi.fn(async () => ({})),
+    };
+    // SAFETY: this fake implements the Forge methods used by models integration.
+    const hook = await configHook(forge as never);
+    const config: Config = {};
+
+    await hook(config);
+
+    expect(config.provider?.forge?.models?.["glm-5.3-flash"]).toMatchObject({
+      variants: {
+        low: { reasoning: { effort: "low" } },
+        high: { reasoning: { effort: "high" } },
+        max: { reasoning: { effort: "max" } },
+      },
+    });
+  });
+
+  test("omits variants when a model has no reasoning options", async () => {
+    const forge = {
+      provider: vi.fn(async () => provider()),
+      models: vi.fn(async () => ({
+        "plain-model": { id: "plain-model", name: "Plain Model" },
+      })),
+      agents: vi.fn(async () => ({})),
+    };
+    // SAFETY: this fake implements the Forge methods used by models integration.
+    const hook = await configHook(forge as never);
+    const config: Config = {};
+
+    await hook(config);
+
+    expect(config.provider?.forge?.models?.["plain-model"]).not.toHaveProperty("variants");
+  });
+
+  test("skips null effort values while retaining string variants", async () => {
+    const forge = {
+      provider: vi.fn(async () => provider()),
+      models: vi.fn(async () => ({
+        "reasoning-model": {
+          id: "reasoning-model",
+          name: "Reasoning Model",
+          reasoning_options: [{ type: "effort", values: [null, "", "low", "high"] }],
+        },
+      })),
+      agents: vi.fn(async () => ({})),
+    };
+    // SAFETY: this fake implements the Forge methods used by models integration.
+    const hook = await configHook(forge as never);
+    const config: Config = {};
+
+    await hook(config);
+
+    expect(config.provider?.forge?.models?.["reasoning-model"]).toMatchObject({
+      variants: {
+        low: { reasoning: { effort: "low" } },
+        high: { reasoning: { effort: "high" } },
+      },
+    });
+  });
+
+  test("omits variants when effort values are only null or empty", async () => {
+    const forge = {
+      provider: vi.fn(async () => provider()),
+      models: vi.fn(async () => ({
+        "empty-effort-model": {
+          id: "empty-effort-model",
+          name: "Empty Effort Model",
+          reasoning_options: [{ type: "effort", values: [null, ""] }],
+        },
+      })),
+      agents: vi.fn(async () => ({})),
+    };
+    // SAFETY: this fake implements the Forge methods used by models integration.
+    const hook = await configHook(forge as never);
+    const config: Config = {};
+
+    await hook(config);
+
+    expect(config.provider?.forge?.models?.["empty-effort-model"]).not.toHaveProperty("variants");
+  });
+
   test("merges allowlisted agents with user configuration taking priority", async () => {
     const agents: Awaited<ReturnType<Forge["agents"]>> = {
       reviewer: { description: "Forge reviewer", prompt: "Review", model: "forge/default" },
