@@ -44,13 +44,16 @@ export async function saveProfile(
   const profile = serializeProfileSelection(selection);
   const profileName = selection && selection !== DesktopProfile ? selection : undefined;
   const saveGlobal = async () => {
-    await options.update((prev) => {
-      const next = structuredClone(prev);
-      next.profiles = profiles;
-      if (profile) next.profile = profile;
-      else delete next.profile;
-      return next;
-    });
+    await options.update(
+      (prev) => {
+        const next = structuredClone(prev);
+        next.profiles = profiles;
+        if (profile) next.profile = profile;
+        else delete next.profile;
+        return next;
+      },
+      { persistProfile: true },
+    );
   };
 
   const route = api.route.current;
@@ -102,6 +105,25 @@ export async function saveProfile(
     throw error;
   }
   store.session.profile.set(profileName ? { id: profileName } : null);
+  if (profileName) {
+    try {
+      await api.client.session.prompt(
+        {
+          sessionID,
+          noReply: true,
+          parts: [
+            {
+              type: "text",
+              text: `Using Forge Profile: ${profileTitle(profiles[profileName], profileName)}`,
+            },
+          ],
+        },
+        { throwOnError: true },
+      );
+    } catch {
+      // The profile notice is advisory and must never block profile changes.
+    }
+  }
   if (model) {
     try {
       await api.client.v2.session.switchModel({ sessionID, model }, { throwOnError: true });
@@ -163,10 +185,7 @@ export function ProfileCommand(
       const modelNames = Object.fromEntries(
         models.map((model) => [`${model.provider}/${model.id}`, model.name]),
       );
-      let selected: ProfileSelection = resolveProfileSelection(
-        store.env.FORGE_PROFILE ?? options.value.profile,
-        profiles,
-      );
+      let selected: ProfileSelection = resolveProfileSelection(options.value.profile, profiles);
       let editKey = "";
       let editID = "";
       let editDraft: Profile | undefined;

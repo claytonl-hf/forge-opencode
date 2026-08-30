@@ -1267,10 +1267,9 @@ describe("profile session listener", () => {
     expect(getProfileMetadata(updates[0])?.profile?.models?.chat).toEqual({ id: "alternate" });
   });
 
-  test("uses the configured global profile when the session has no profile pin", async () => {
+  test("does not stamp the configured global profile when the session has no profile pin", async () => {
     const updates: SessionMetadata[] = [];
     const listener = createProfileSessionListener({
-      getGlobalProfile: () => "balanced",
       getProfiles: () => profiles,
       update: async (_sessionID, metadata) => {
         updates.push(metadata);
@@ -1291,17 +1290,7 @@ describe("profile session listener", () => {
     } as never);
     await Promise.resolve();
 
-    expect(updates).toEqual([
-      {
-        preserved: "value",
-        forge: {
-          profile: {
-            id: "balanced",
-            models: { reviewer: { id: "alternate" } },
-          },
-        },
-      },
-    ]);
+    expect(updates).toEqual([]);
   });
 
   test("removes an agent override when the configured model is selected", async () => {
@@ -1533,6 +1522,13 @@ describe("ProfileCommand", () => {
         model: { id: "reviewer", providerID: "forge", variant: "high" },
       },
     ]);
+    expect(api.profileMessages).toEqual([
+      {
+        sessionID: "session",
+        noReply: true,
+        parts: [{ type: "text", text: "Using Forge Profile: balanced" }],
+      },
+    ]);
   });
 
   test("replaces a session profile before a failed in-session model switch", async () => {
@@ -1588,6 +1584,7 @@ describe("ProfileCommand", () => {
     await saveProfile("balanced", ProfileScope.Global, { api, options, profiles, store });
 
     expect(options.value.profile).toBe("balanced");
+    expect(options.intents).toEqual([{ persistProfile: true }]);
     expect(sessionUpdates).toEqual([
       { sessionID: "session", metadata: { forge: { profile: { id: "balanced" } } } },
     ]);
@@ -1595,6 +1592,13 @@ describe("ProfileCommand", () => {
       {
         sessionID: "session",
         model: { id: "default", providerID: "forge" },
+      },
+    ]);
+    expect(api.profileMessages).toEqual([
+      {
+        sessionID: "session",
+        noReply: true,
+        parts: [{ type: "text", text: "Using Forge Profile: balanced" }],
       },
     ]);
   });
@@ -1687,8 +1691,10 @@ describe("ProfileCommand", () => {
 
     expect(options.value.profile).toBeUndefined();
     expect(options.writes).toHaveLength(1);
+    expect(options.intents).toEqual([{ persistProfile: true }]);
     expect(sessionUpdates).toEqual([{ sessionID: "session", metadata: {} }]);
     expect(switches).toHaveLength(0);
+    expect(api.profileMessages).toEqual([]);
   });
 
   test("selects Desktop globally and clears the current session pin", async () => {
@@ -1732,6 +1738,7 @@ describe("ProfileCommand", () => {
       expect(options.writes).toHaveLength(0);
       expect(sessionUpdates).toHaveLength(0);
       expect(switches).toHaveLength(0);
+      expect(api.profileMessages).toEqual([]);
       expect(store.session.profile.get()).toEqual({ id: "balanced" });
     } finally {
       store.session.profile.set(undefined);
@@ -1864,18 +1871,27 @@ describe("ProfileCommand", () => {
 function createTestOptions(initial: ForgeOptions) {
   let value = initial;
   const writes: ForgeOptions[] = [];
+  const intents: Array<Parameters<UseForgeOptions["update"]>[1]> = [];
   // SAFETY: The fake implements the options members used by the profile save helpers.
   const options = {
     get value() {
       return value;
     },
-    update: async (updater: Parameters<UseForgeOptions["update"]>[0]) => {
+    update: async (
+      updater: Parameters<UseForgeOptions["update"]>[0],
+      intent: Parameters<UseForgeOptions["update"]>[1],
+    ) => {
       value = ForgeOptions.parse(updater instanceof Function ? updater(value) : updater);
       writes.push(value);
+      intents.push(intent);
       return value;
     },
     writes,
-  } as UseForgeOptions & { writes: ForgeOptions[] };
+    intents,
+  } as UseForgeOptions & {
+    writes: ForgeOptions[];
+    intents: Array<Parameters<UseForgeOptions["update"]>[1]>;
+  };
   return options;
 }
 
@@ -1886,6 +1902,11 @@ function createSaveApi(
   directory = "/tmp",
   switchError = false,
 ) {
+  const profileMessages: Array<{
+    sessionID: string;
+    noReply: boolean;
+    parts: Array<{ type: "text"; text: string }>;
+  }> = [];
   // SAFETY: The fake implements the TUI route, session, client, and toast members used by saveProfile.
   return Object.assign({} as TuiPluginApi, {
     route: { current: { name: "session", params: { sessionID: "session" } } },
@@ -1894,6 +1915,9 @@ function createSaveApi(
       session: {
         update: async (input: CommandSessionUpdateInput) => {
           sessionUpdates.push(input);
+        },
+        prompt: async (input: (typeof profileMessages)[number]) => {
+          profileMessages.push(input);
         },
       },
       v2: {
@@ -1906,5 +1930,6 @@ function createSaveApi(
       },
     },
     ui: { toast: () => {} },
+    profileMessages,
   });
 }

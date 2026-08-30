@@ -12,7 +12,6 @@ import { createEmptyPluginStore } from "#tests/plugin/fakes";
 
 type TuiSessionUpdatedEvent = {
   properties: {
-    sessionID?: string;
     info: {
       id: string;
       agent?: string;
@@ -64,7 +63,7 @@ describe("profile integration", () => {
     expect(contribution.slots).toEqual({});
   });
 
-  test("uses FORGE_PROFILE for TUI session updates when it differs from options.profile", async () => {
+  test("does not stamp the global profile when a TUI session has no profile pin", async () => {
     const options = {
       value: ForgeOptions.parse({
         profile: "configured",
@@ -74,21 +73,20 @@ describe("profile integration", () => {
         },
       }),
     };
-    const store = createPluginStore(
-      { models: async () => ({}), usage: async () => undefined },
-      { FORGE_PROFILE: "environment" },
-    );
+    const store = createPluginStore({
+      models: async () => ({}),
+      usage: async () => undefined,
+    });
     const updates: SessionUpdateInput[] = [];
     let sessionUpdated: ((event: TuiSessionUpdatedEvent) => void) | undefined;
+    // SAFETY: this focused fake provides only the provider and parsed options used during setup.
     const integration = await ProfileIntegration({
-      // SAFETY: this focused Forge fake provides the only method used during TUI setup.
       forge: { provider: async () => undefined } as never,
-      // SAFETY: this focused options fake provides the parsed profile settings used by the integration.
       options: options as never,
       store,
     });
 
-    // SAFETY: this focused TUI fake captures only the session update listener.
+    // SAFETY: this focused TUI fake provides the event and client methods the session.updated hook uses.
     await integration.tui!({
       event: {
         on: (name: string, callback: (event: TuiSessionUpdatedEvent) => void) => {
@@ -105,8 +103,6 @@ describe("profile integration", () => {
       },
     } as never);
 
-    expect(sessionUpdated).toBeTypeOf("function");
-    // The listener is registered during TUI setup and is invoked with a changed Forge model.
     sessionUpdated!({
       properties: {
         info: {
@@ -118,19 +114,7 @@ describe("profile integration", () => {
     });
     await Promise.resolve();
 
-    expect(updates).toEqual([
-      {
-        sessionID: "session",
-        metadata: {
-          forge: {
-            profile: {
-              id: "environment",
-              models: { reviewer: { id: "alternate-model" } },
-            },
-          },
-        },
-      },
-    ]);
+    expect(updates).toEqual([]);
   });
 
   test("intentionally overrides configured model and variant while preserving other agent fields", async () => {

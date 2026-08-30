@@ -529,13 +529,8 @@ export function visibleHomeProfileTitle(
   globalProfile: string | undefined,
   profiles: Record<string, Profile> | undefined,
 ): string | undefined {
-  const sessionProfileID = sessionProfile?.id;
-  const title = visibleProfileTitle(
-    undefined,
-    undefined,
-    sessionProfileID || globalProfile,
-    profiles,
-  );
+  const sessionProfileID = sessionProfile?.id ?? globalProfile;
+  const title = visibleProfileTitle(undefined, undefined, sessionProfileID, profiles);
   return hasModelOverrides(sessionProfile) && title ? `${title}*` : title;
 }
 

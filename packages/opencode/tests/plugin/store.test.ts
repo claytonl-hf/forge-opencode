@@ -80,12 +80,10 @@ describe("plugin store", () => {
 
   test("stores the supported environment overrides", () => {
     const store = createPluginStore(forge, {
-      FORGE_PROFILE: "balanced",
       FORGE_USAGE_ALERT_BALANCE: "3.5",
     });
 
     expect(store.env).toEqual({
-      FORGE_PROFILE: "balanced",
       FORGE_USAGE_ALERT_BALANCE: "3.5",
     });
   });

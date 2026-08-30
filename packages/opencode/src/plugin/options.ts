@@ -47,6 +47,7 @@ export const ForgeOptions = z.object({
 export type ForgeOptions = z.infer<typeof ForgeOptions>;
 type ForgeOptionsUpdater = (
   options: ForgeOptions | ((options: ForgeOptions) => ForgeOptions),
+  intent?: { persistProfile?: boolean },
 ) => Promise<ForgeOptions> | ForgeOptions;
 
 export const ForgeDefaultOptions = ForgeOptions.parse({});
@@ -71,19 +72,45 @@ export async function useForgeOptions(directory: string = process.cwd()) {
     results.filter((result): result is NonNullable<typeof result> => result !== null),
   );
 
+  // Merge and validate file configuration before applying the runtime override.
   const [firstConfig, ...remainingConfigs] = configs;
-  const value: ForgeOptions = firstConfig
+  const configured: ForgeOptions = firstConfig
     ? defu(firstConfig, ...remainingConfigs, ForgeDefaultOptions)
     : ForgeDefaultOptions;
 
-  const update: ForgeOptionsUpdater = async (updater) => {
+  // FORGE_PROFILE is consumed exactly once, while Forge options are being resolved.
+  // An unknown value is ignored, and the override only applies to the in-memory
+  // runtime options: persisting a profile requires an explicit
+  // `{ persistProfile: true }` intent on the update.
+  const envProfile = process.env.FORGE_PROFILE;
+  const runtimeProfile =
+    envProfile && configured.profiles?.[envProfile] ? envProfile : configured.profile;
+  const value: ForgeOptions = { ...configured, profile: runtimeProfile };
+  let persistedProfile = configured.profile;
+
+  const update: ForgeOptionsUpdater = async (updater, intent) => {
     const next = updater instanceof Function ? updater(value) : updater;
     const data = ForgeOptions.parse(next);
 
+    // Only an explicit persistence intent writes the profile choice; unrelated
+    // updates keep the configured profile on disk so the env seed cannot leak.
+    const persisted = intent?.persistProfile ? data : { ...data, profile: persistedProfile };
+
     for (const file of files) {
-      await writeFile(file.path, file.stringify(data), "utf-8");
+      await writeFile(file.path, file.stringify(persisted), "utf-8");
       break;
     }
+
+    persistedProfile = persisted.profile;
+
+    // Keep the exposed runtime object exactly in step with the applied update
+    // without replacing its identity, since consumers hold `options.value`.
+    // SAFETY: value is a ForgeOptions, so its runtime keys are valid ForgeOptions keys.
+    for (const key of Object.keys(value) as (keyof ForgeOptions)[]) {
+      if (!(key in data)) delete value[key];
+    }
+    Object.assign(value, data);
+
     return data;
   };
 

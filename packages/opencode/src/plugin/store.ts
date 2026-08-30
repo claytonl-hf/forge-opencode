@@ -7,7 +7,6 @@ import { createPolledResource, createResource } from "#plugin/resource";
 
 export type PluginStoreEnv = {
   FORGE_USAGE_ALERT_BALANCE?: string;
-  FORGE_PROFILE?: string;
 };
 
 type PluginModel = Pick<ForgeModel, "name" | "metadata">;
@@ -23,7 +22,6 @@ export function createPluginStore(
   return {
     env: {
       FORGE_USAGE_ALERT_BALANCE: env.FORGE_USAGE_ALERT_BALANCE,
-      FORGE_PROFILE: env.FORGE_PROFILE,
     },
     session: {
       profile,

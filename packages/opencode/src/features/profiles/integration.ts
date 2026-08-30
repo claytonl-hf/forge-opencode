@@ -6,7 +6,7 @@ import { onTuiSessionCreated } from "./lifecycle";
 import { createProfileSessionListener } from "./listener";
 import { createProfileSessionHooks, type ProfileSessionClient } from "./session";
 
-export const ProfileIntegration: Integration = async ({ forge, options: forgeOptions, store }) => {
+export const ProfileIntegration: Integration = async ({ forge, store, options }) => {
   const provider = await forge.provider();
 
   return {
@@ -21,17 +21,16 @@ export const ProfileIntegration: Integration = async ({ forge, options: forgeOpt
         ...createProfileSessionHooks({
           client: profileClient,
           directory,
-          getGlobalProfile: () => store.env.FORGE_PROFILE ?? forgeOptions.value.profile,
-          getProfiles: () => forgeOptions.value.profiles,
+          getGlobalProfile: () => options.value.profile,
+          getProfiles: () => options.value.profiles,
         }),
         async config(config) {
-          const options = forgeOptions.value;
-          const profileName = store.env.FORGE_PROFILE ?? options.profile;
-          if (!provider || !options.profiles || !profileName) {
+          const profileName = options.value.profile;
+          if (!provider || !options.value.profiles || !profileName) {
             return;
           }
 
-          const profile = options.profiles[profileName];
+          const profile = options.value.profiles[profileName];
 
           if (!profile) {
             return;
@@ -79,7 +78,7 @@ export const ProfileIntegration: Integration = async ({ forge, options: forgeOpt
           agent: info.agent,
           model,
           metadata: info.metadata,
-          profiles: forgeOptions.value.profiles ?? {},
+          profiles: options.value.profiles ?? {},
           store,
           getParent: async (id) => api.state.session.get(id),
           update: async (sessionID, metadata) => {
@@ -94,8 +93,7 @@ export const ProfileIntegration: Integration = async ({ forge, options: forgeOpt
       const disposeSessionListener = api.event.on(
         "session.updated",
         createProfileSessionListener({
-          getGlobalProfile: () => store.env.FORGE_PROFILE ?? forgeOptions.value.profile,
-          getProfiles: () => forgeOptions.value.profiles,
+          getProfiles: () => options.value.profiles,
           update: async (sessionID, metadata) => {
             await api.client.session.update({ sessionID, metadata });
           },
@@ -104,10 +102,8 @@ export const ProfileIntegration: Integration = async ({ forge, options: forgeOpt
       api.lifecycle?.onDispose(disposeSessionListener);
 
       return {
-        commands: [ProfileCommand(api, forgeOptions, store)],
-        slots: isComponentEnabled(forgeOptions, "profile")
-          ? ProfileSlots(api, forgeOptions, store)
-          : {},
+        commands: [ProfileCommand(api, options, store)],
+        slots: isComponentEnabled(options, "profile") ? ProfileSlots(api, options, store) : {},
       };
     },
   };

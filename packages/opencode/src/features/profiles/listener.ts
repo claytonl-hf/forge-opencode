@@ -13,7 +13,6 @@ import {
 
 type ProfileSessionListenerInput = {
   getProfiles: () => Record<string, Profile> | undefined;
-  getGlobalProfile?: () => string | undefined;
   update: (sessionID: string, metadata: SessionMetadata) => Promise<void>;
 };
 
@@ -56,8 +55,7 @@ export function createProfileSessionListener(
 
     const current = getProfileMetadata(info.metadata)?.profile;
     const profiles = input.getProfiles();
-    const profileID =
-      current?.id && profiles?.[current.id] ? current.id : input.getGlobalProfile?.();
+    const profileID = current?.id && profiles?.[current.id] ? current.id : undefined;
     if (!profileID) return;
 
     const profile = profiles?.[profileID];
